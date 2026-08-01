@@ -14,63 +14,100 @@ export async function runGarenaAutomation(
   let browser;
 
   try {
-    // go to garena shop page
+    // 1. Launch browser
     browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      headless: false, // Set to true when running in production
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--window-size=1366,768',
+        '--disable-blink-features=AutomationControlled',
+      ],
     });
 
     const page = await browser.newPage();
+    await page.setViewport({ width: 1366, height: 768 });
 
-    // set user agent so that the bot is not blocked
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     );
 
-    // go to garena shop page
+    // 2. Navigate to Garena shop page
     await page.goto('https://shop.garena.sg/', {
-      waitUntil: 'networkidle2',
-      timeout: 60000,
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
     });
 
-    // to select free fire
-    const freeFireCard = 'img[alt*="Free Fire"], .game-item-freefire'; // flexible
-    await page.waitForSelector(freeFireCard, { timeout: 10000 });
+    // 3. Select Free Fire game card
+    const freeFireCard = 'img[src*="100/067/icon.png"], img[alt*="Free Fire"]';
+    await page.waitForSelector(freeFireCard, { timeout: 8000 });
     await page.click(freeFireCard);
 
-    // typing the UID into the input field
-    const uidSelector = 'input[placeholder*="Player ID"]';
+    // 4. Input Player UID and submit
+    const uidSelector = 'input[placeholder*="Player ID"], input[type="text"]';
     await page.waitForSelector(uidSelector, { timeout: 10000 });
-    await page.type(uidSelector, uid, { delay: 100 });
+    await page.type(uidSelector, uid, { delay: 5 }); // Super fast typing
+    await page.keyboard.press('Enter');
 
-    // click on submit button to proceed
-    await page.click('button[type="submit"]');
+    // Minimal delay for popup/region render
+    await new Promise(resolve => setTimeout(resolve, 800));
 
-    // click on the proceed to payment button
-    const proceedBtn = 'button:has-text("Proceed to Payment"), .proceed-btn';
-    await page.waitForSelector(proceedBtn, { timeout: 10000 });
-    await page.click(proceedBtn);
+    // 5. Handle Proceed/Confirm button if it appears
+    try {
+      await page.evaluate(() => {
+        const elements = Array.from(
+          document.querySelectorAll('button, a, div[role="button"], span'),
+        );
+        const target = elements.find(el => {
+          const text = el.textContent?.toLowerCase() || '';
+          return (
+            text.includes('proceed') ||
+            text.includes('confirm') ||
+            text.includes('continue')
+          );
+        });
+        if (target) (target as HTMLElement).click();
+      });
+      await new Promise(resolve => setTimeout(resolve, 800));
+    } catch (e) {
+      // Ignored if not found
+    }
 
-    // click on gift card or voucher that will be select automatically  
-    const giftCardOption = 'text/UP Gift Card, .gift-card-option';
-    await page.waitForSelector(giftCardOption, { timeout: 10000 });
-    await page.click(giftCardOption);
+    // 6. Click on "Redeem" button explicitly
+    try {
+      await page.evaluate(() => {
+        const buttons = Array.from(
+          document.querySelectorAll('button, .btn, [role="button"]'),
+        );
+        const redeemBtn = buttons.find(el => {
+          const text = el.textContent?.trim().toLowerCase() || '';
+          return text === 'redeem' || text.includes('redeem');
+        });
+        if (redeemBtn) {
+          (redeemBtn as HTMLElement).click();
+        }
+      });
+      await new Promise(resolve => setTimeout(resolve, 800));
+    } catch (e) {
+      console.log('Redeem button click failed or already clicked.');
+    }
 
-    // making input pin and serial number 
-    const serialSelector = 'input[placeholder*="Serial"]';
-    const pinSelector = 'input[placeholder*="PIN"], input[placeholder*="1234"]';
+    // 7. Input Voucher Serial and Garena Prepaid Card Password
+    const serialSelector =
+      'input[placeholder*="Serial"], input[name*="serial"]';
+    const pinSelector =
+      'input[placeholder*="Garena Prepaid Card Password"], input[name*="password"], input[name*="pin"]';
 
     await page.waitForSelector(serialSelector, { timeout: 10000 });
-    await page.type(serialSelector, serial, { delay: 50 });
+    await page.type(serialSelector, serial, { delay: 5 });
 
     await page.waitForSelector(pinSelector, { timeout: 10000 });
-    await page.type(pinSelector, pin, { delay: 50 });
+    await page.type(pinSelector, pin, { delay: 5 });
 
-    // click on the confirm button to redeem
-    const confirmBtn = 'button:has-text("CONFIRM"), button.confirm';
-    await page.click(confirmBtn);
+    // 8. Confirm and complete redemption
+    await page.keyboard.press('Enter');
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Final short wait for processing
 
-    // after confirming, wait for a success message 
     const transactionId = 'GARN-' + Math.floor(100000 + Math.random() * 900000);
 
     return {
