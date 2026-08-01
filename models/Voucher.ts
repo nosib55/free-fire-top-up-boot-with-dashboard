@@ -1,29 +1,21 @@
 import mongoose, { Schema } from 'mongoose';
 
-// voucher data structure or type
-export type IVoucher = {
-  code: string; // voucher code (like : BDMB-1234567890)
-  prefix: string; // prefix (e.g., BDMB, UPBD)
-  category: string; // game or category (Free Fire)
-  status: 'Pending' | 'Success' | 'Failed'; // current status of the code
-  createdAt?: Date;
-};
-
-// voucher schema or table structure
 const VoucherSchema = new Schema(
   {
-    code: { type: String, required: true, unique: true },
-    prefix: { type: String, required: true },
-    category: { type: String, required: true },
-    status: {
-      type: String,
-      enum: ['Pending', 'Success', 'Failed'],
-      default: 'Pending',
+    serial: { type: String, required: true, unique: true },
+    pin: { type: String, required: true },
+    amount: { type: Number, required: true }, //20, 36, 80, 800 
+    isUsed: { type: Boolean, default: false }, // after redeeming, it will be true
+    redeemedAt: { type: Date, default: null },
+    redeemedBy: { type: String, default: null }, // UID of the user who redeemed the voucher
+    usedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
     },
   },
   { timestamps: true },
 );
 
-// export the model
 export default mongoose.models.Voucher ||
   mongoose.model('Voucher', VoucherSchema);
