@@ -1,143 +1,179 @@
 'use client';
-import { useState } from 'react';
+
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
+import { Mail, Lock, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [siteSettings, setSiteSettings] = useState({
+    siteName: 'Apex Top-Up',
+    logoUrl: '',
+  });
 
-  const handleLogin = async (e: React.SyntheticEvent) => {
+  React.useEffect(() => {
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        if (data.success && data.settings) {
+          setSiteSettings({
+            siteName: data.settings.siteName || 'Apex Top-Up',
+            logoUrl: data.settings.logoUrl || '',
+          });
+        }
+      } catch {}
+    }
+    loadSettings();
+  }, []);
+
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
     setLoading(true);
+    setErrorMessage('');
 
-    // demo login check (simulate small delay for real feel)
-    setTimeout(() => {
-      if (email === 'admin@gmail.com' && password === '123456') {
-        document.cookie = 'admin_session=true; path=/; max-age=86400'; // 1 day 
-        router.push('/dashboard');
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (data.success && data.user) {
+        if (data.user.role === 'admin') {
+          router.push('/admin');
+        } else {
+          router.push('/userDashboard');
+        }
       } else {
-        setError('Invalid email or password!');
-        setLoading(false);
+        setErrorMessage(data.message || 'Invalid email or password.');
       }
-    }, 600);
-  };
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Connection error.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#120F0D] text-white p-4 sm:p-6 lg:p-8 font-['Manrope',sans-serif]">
-      <div className="flex w-full sm:w-4/5 max-w-5xl flex-col lg:flex-row rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-[#2A2420]">
-        {/* Left Banner - hidden on small screens, shown from md up */}
-        <div className="hidden md:flex md:w-1/2 relative min-h-[280px] lg:min-h-[550px] bg-black">
-          <img
-            src="https://assets-prd.ignimgs.com/2023/06/07/freefire-1686171898799.jpg?crop=1%3A1%2Csmart&format=jpg&auto=webp&quality=80"
-            alt="Free Fire Gaming Theme"
-            className="absolute inset-0 w-full h-full object-cover opacity-70 hover:scale-105 transition duration-700"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#120F0D] via-black/30 to-black/40" />
+    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-10 selection:bg-cyan-500 selection:text-white">
+      {/* Outer Card */}
+      <div className="relative w-full max-w-4xl">
+        <div className="absolute -inset-1 rounded-[36px] bg-gradient-to-r from-cyan-600/20 to-blue-600/20 blur-xl opacity-60 pointer-events-none" />
 
-          <div className="absolute bottom-6 left-6 right-6 sm:bottom-10 sm:left-10 sm:right-10 z-10 space-y-2 sm:space-y-3">
-            <span className="inline-block px-3 py-1.5 sm:px-3.5 bg-[#FF5F1F]/90 text-[#2A1206] rounded-full text-[10px] sm:text-xs font-bold tracking-wider uppercase shadow-lg font-['JetBrains_Mono',monospace]">
-              Free Fire Automation
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-wide leading-tight font-['Rajdhani',sans-serif]">
-              Control & Manage Instantly
-            </h2>
-            <p className="text-xs sm:text-sm text-[#A89F94] leading-relaxed">
-              Manage your Free Fire vouchers and codes with ease. Track,
-              validate, and distribute vouchers efficiently — all in one
-              dashboard.
-            </p>
-          </div>
-        </div>
-
-        {/* Login Form */}
-        <div className="w-full md:w-1/2 bg-[#1C1815] p-6 sm:p-10 lg:p-14 flex flex-col justify-center">
-          {/* Mobile-only badge since banner is hidden */}
-          <span className="md:hidden self-start mb-4 px-3 py-1.5 bg-[#FF5F1F]/90 text-[#2A1206] rounded-full text-[10px] font-bold tracking-wider uppercase shadow-lg font-['JetBrains_Mono',monospace]">
-            Free Fire Automation
-          </span>
-
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-['Rajdhani',sans-serif] uppercase">
-              Admin Portal
-            </h1>
-            <p className="text-sm text-[#A89F94] mt-2">
-              Sign in to access your dashboard
-            </p>
+        <div className="relative w-full rounded-[32px] bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2 min-h-[480px]">
+          
+          {/* LEFT SIDE: Pure Clean Free Fire Artwork */}
+          <div className="relative min-h-[260px] sm:min-h-[340px] md:min-h-full overflow-hidden bg-slate-950 border-b md:border-b-0 md:border-r border-slate-800 group">
+            <Image
+              src="/login-banner.jpg"
+              alt="Free Fire"
+              fill
+              priority
+              className="object-cover object-center filter brightness-95 group-hover:scale-105 transition-transform duration-700"
+            />
+            {/* Subtle Gradient */}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent" />
           </div>
 
-          {error && (
-            <div className="mb-6 p-3.5 sm:p-4 bg-[#D9352C]/10 border border-[#D9352C]/40 text-[#F0847D] rounded-xl text-sm text-center font-medium">
-              {error}
-            </div>
-          )}
+          {/* RIGHT SIDE: Website Name & Sign In Form */}
+          <div className="p-6 sm:p-10 flex flex-col justify-between space-y-6 bg-slate-900/95">
+            {/* Website Brand Name on the Right Side */}
+            <div className="space-y-3">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-slate-950 border border-slate-800 text-white font-black text-xs hover:border-cyan-500 transition-colors shadow-md"
+              >
+                {siteSettings.logoUrl ? (
+                  <div className="relative w-6 h-6 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-900">
+                    <Image src={siteSettings.logoUrl} alt="Logo" fill className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-6 h-6 rounded-lg bg-cyan-600 flex items-center justify-center text-white text-xs font-black shadow-md shadow-cyan-600/30">
+                    {siteSettings.siteName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="tracking-wider text-sm font-extrabold">{siteSettings.siteName.toUpperCase()}</span>
+              </Link>
 
-          <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#A89F94] mb-2">
-                Email Address
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3.5 sm:px-5 sm:py-4 bg-[#252019] rounded-xl border border-[#3A332C] focus:outline-none focus:border-[#FF5F1F] focus:ring-1 focus:ring-[#FF5F1F] transition text-base text-white placeholder-[#6B6259] font-['JetBrains_Mono',monospace]"
-                placeholder="admin@gmail.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#A89F94] mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-3.5 sm:px-5 sm:py-4 pr-16 bg-[#252019] rounded-xl border border-[#3A332C] focus:outline-none focus:border-[#FF5F1F] focus:ring-1 focus:ring-[#FF5F1F] transition text-base text-white placeholder-[#6B6259] font-['JetBrains_Mono',monospace]"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(s => !s)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#A89F94] hover:text-[#F0A93D] transition"
-                >
-                  {showPassword ? 'Hide' : 'Show'}
-                </button>
+              <div>
+                <h1 className="text-2xl font-black text-white tracking-tight">Sign In to Account</h1>
+                <p className="text-xs text-slate-400 mt-0.5">Enter your email and password to continue.</p>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs sm:text-sm text-[#A89F94]">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  className="accent-[#FF5F1F] w-4 h-4 rounded"
-                />
-                Remember me
-              </label>
-              <a
-                href="#"
-                className="text-[#F0A93D] hover:text-[#FF5F1F] font-medium transition"
-              >
-                Forgot password?
-              </a>
-            </div>
+            {/* Error Message */}
+            {errorMessage && (
+              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold text-center">
+                {errorMessage}
+              </div>
+            )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 sm:py-4 px-6 bg-gradient-to-r from-[#FF5F1F] to-[#F0A93D] hover:from-[#FF7A3D] hover:to-[#F5BE5F] disabled:opacity-60 disabled:cursor-not-allowed text-[#1C1815] rounded-xl font-bold shadow-lg shadow-[#FF5F1F]/30 transition duration-200 text-base tracking-wide font-['Rajdhani',sans-serif] uppercase"
-            >
-              {loading ? 'Signing In...' : 'Sign In'}
-            </button>
-          </form>
+            <form onSubmit={handleLogin} className="space-y-3.5 text-xs">
+              <div className="space-y-1">
+                <label className="block text-slate-300 font-medium">Email Address</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors font-mono"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-slate-300 font-medium">Password</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-200"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold text-white shadow-md shadow-cyan-600/30 transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] mt-2"
+              >
+                <span>{loading ? 'Signing in...' : 'Sign In'}</span>
+                {!loading && <ArrowRight className="w-4 h-4" />}
+              </button>
+            </form>
+
+            {/* Footer */}
+            <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+              <Link href="/" className="hover:text-cyan-400 transition-colors font-medium">
+                ← Return Home
+              </Link>
+              <span className="flex items-center gap-1 text-slate-500">
+                <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" /> Secure Gateway
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

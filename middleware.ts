@@ -2,21 +2,35 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  // if the request is for the dashboard page, check for the session cookie
-  if (request.nextUrl.pathname.startsWith('/dashboard')) {
-    // check for the session cookie (here 'admin_session' is the cookie name)
-    const session = request.cookies.get('admin_session');
+  const { pathname } = request.nextUrl;
+  const session = request.cookies.get('admin_session')?.value;
+  const userRole = request.cookies.get('user_role')?.value;
 
-    // if the cookie is not present, redirect the user to the login page
+  // 1. Guard /admin routes: strictly for authenticated admin users
+  if (pathname.startsWith('/admin') || pathname.startsWith('/adminDashboard')) {
     if (!session) {
-      return NextResponse.redirect(new URL('/', request.url));
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    if (userRole !== 'admin') {
+      return NextResponse.redirect(new URL('/userDashboard', request.url));
+    }
+  }
+
+  // 2. Guard /userDashboard & /dashboard routes: requires authentication
+  if (pathname.startsWith('/userDashboard') || pathname.startsWith('/dashboard')) {
+    if (!session) {
+      return NextResponse.redirect(new URL('/login', request.url));
     }
   }
 
   return NextResponse.next();
 }
 
-// specify which pages this middleware should run on
 export const config = {
-  matcher: '/dashboard/:path*',
+  matcher: [
+    '/admin/:path*',
+    '/adminDashboard/:path*',
+    '/userDashboard/:path*',
+    '/dashboard/:path*',
+  ],
 };

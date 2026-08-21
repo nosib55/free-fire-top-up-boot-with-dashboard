@@ -1,29 +1,50 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
-export type IUser = {
+export interface IUser extends Document {
   name: string;
   email: string;
-  password: string;
-  role: 'admin' | 'reseller' | 'user';
+  phone?: string;
+  password?: string;
+  passwordHash?: string;
+  role: string;
+  status: string;
+  hitBalance: number;
+  balance?: number;
+  requestLimit?: number;
   apiKey?: string;
-  requestLimit: number;
+  resellerProfile?: {
+    assignedLimit?: number;
+    usedLimit?: number;
+    prefixTag?: string;
+  };
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-const UserSchema = new Schema(
+const UserSchema = new Schema<IUser>(
   {
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    role: {
-      type: String,
-      enum: ['admin', 'reseller', 'user'],
-      default: 'user',
-    },
-    apiKey: { type: String, unique: true, sparse: true },
+    email: { type: String, required: true, unique: true, index: true },
+    phone: { type: String, default: '' },
+    password: { type: String },
+    passwordHash: { type: String },
+    role: { type: String, default: 'user' },
+    status: { type: String, default: 'active' },
+    hitBalance: { type: Number, default: 1000, min: 0 },
+    balance: { type: Number, default: 0 },
     requestLimit: { type: Number, default: 1000 },
+    apiKey: { type: String, sparse: true },
+    resellerProfile: {
+      assignedLimit: { type: Number, default: 0 },
+      usedLimit: { type: Number, default: 0 },
+      prefixTag: { type: String, default: '' },
+    },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
-export default mongoose.models.User ||
-  mongoose.model('User', UserSchema, 'users');
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
+
+export default mongoose.model<IUser>('User', UserSchema);
