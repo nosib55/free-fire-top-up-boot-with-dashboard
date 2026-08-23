@@ -394,9 +394,9 @@ export default function UserDashboardPage() {
                   onChange={(e: any) => setTestPipeline(e.target.value)}
                   className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-white font-bold"
                 >
-                  <option value="UNIPIN_VOUCHER">UniPin Voucher / Gift Card (BDMB / UPBD)</option>
-                  <option value="UNIPIN_WALLET">UniPin Direct Wallet Balance (100+ Diamonds)</option>
-                  <option value="GARENA_SHELLS">Garena Shells (BDGamesBazar Pass / Deals)</option>
+                  <option value="UNIPIN_VOUCHER">UniPin Voucher / Gift Card</option>
+                  <option value="UNIPIN_WALLET">UniPin Direct Wallet Balance</option>
+                  <option value="GARENA_SHELLS">Garena Shells</option>
                 </select>
               </div>
 

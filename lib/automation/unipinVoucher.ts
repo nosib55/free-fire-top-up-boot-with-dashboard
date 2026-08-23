@@ -1,6 +1,8 @@
 // lib/automation/unipinVoucher.ts
 import { detectUnipinDenomination } from './unipinPatterns';
 import { getRealPlayerName } from './playerLookup';
+import { getBrowser } from './browserManager';
+import { Page } from 'puppeteer';
 
 export interface UniPinVoucherParams {
   uid: string;
@@ -18,6 +20,16 @@ export interface AutomationResult {
   errorReason?: 'INVALID_UID' | 'INVALID_VOUCHER' | 'WORKER_ERROR';
 }
 
+async function saveDebugScreenshot(page: Page, label: string) {
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const debugDir = path.join(process.cwd(), 'public', 'debug');
+    if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+    await page.screenshot({ path: path.join(debugDir, `${label}_${Date.now()}.png`), fullPage: true });
+  } catch {}
+}
+
 export async function processUniPinVoucher({
   uid,
   voucherCode,
@@ -25,8 +37,7 @@ export async function processUniPinVoucher({
   pin: rawPin,
 }: UniPinVoucherParams): Promise<AutomationResult> {
   const fullText = (voucherCode || `${rawSerial || ''} ${rawPin || ''}`).trim();
-  
-  // Extract serial and pin if combined in fullText
+
   let effectiveSerial = rawSerial || '';
   let effectivePin = rawPin || '';
 
@@ -49,341 +60,378 @@ export async function processUniPinVoucher({
   const cleanCode = (effectiveSerial ? `${effectiveSerial} ${effectivePin}` : fullText).toUpperCase();
   const isBDMB = cleanCode.startsWith('BDMB');
   const isUPBD = cleanCode.startsWith('UPBD');
-  
-  // Auto-detect UniPin Diamond Denomination from regex pattern and map to Free Fire rewards
+
   const detectedPattern = detectUnipinDenomination(cleanCode) || detectUnipinDenomination(fullText);
   const diamondLabel = detectedPattern ? detectedPattern.diamondLabel : '240 Diamonds';
-  const voucherType = isBDMB 
-    ? `UniPin BD Mobile (${diamondLabel})` 
-    : isUPBD 
-    ? `UniPin BD Voucher (${diamondLabel})` 
+  const voucherType = isBDMB
+    ? `UniPin BD Mobile (${diamondLabel})`
+    : isUPBD
+    ? `UniPin BD Voucher (${diamondLabel})`
     : `Generic UniPin Voucher (${diamondLabel})`;
 
-  console.log(`[UniPin Worker] Processing ${voucherType} for Player UID: ${uid} (Serial: ${effectiveSerial || 'N/A'}, PIN: ${effectivePin ? effectivePin.substring(0, 4) + '****' : 'N/A'})`);
+  console.log(`[UniPin Worker] Processing ${voucherType} | UID: ${uid} | Serial: ${effectiveSerial || 'N/A'} | PIN: ${effectivePin ? effectivePin.substring(0, 4) + '****' : 'N/A'}`);
 
-  // Step 1: Query live Garena Server to verify player UID & retrieve Player Nickname
-  const playerLookup = await getRealPlayerName(uid);
-  if (!playerLookup.success && playerLookup.message?.includes('does not exist')) {
-    return {
-      success: false,
-      message: `Player UID '${uid}' is invalid or does not exist on Garena servers.`,
-      errorReason: 'INVALID_UID',
-    };
-  }
+  // Skip pre-lookup for speed — real name extracted from Garena page during automation
+  let playerName = `Free Fire Player (${uid})`;
 
-  const playerName = playerLookup.playerName || `Free Fire Player (${uid})`;
 
-  // Step 2: Handle Demo/Sandbox voucher codes
+  // Step 2: Sandbox
   const isSandboxVoucher = cleanCode.includes('8921-9402') || cleanCode === 'TEST_VOUCHER' || cleanCode.startsWith('DEMO_');
   if (isSandboxVoucher) {
-    const orderId = `UP_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
     return {
       success: true,
-      message: `[Sandbox] Top-up of ${diamondLabel} successfully simulated for Player ${playerName} (UID: ${uid}).`,
+      message: `[Sandbox] Top-up of ${diamondLabel} simulated for Player ${playerName} (UID: ${uid}).`,
       voucherType,
       playerName,
-      orderId,
+      orderId: `UP_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`,
     };
   }
 
-  // Step 3: Real live voucher redemption via Official Garena Topup & UniBox Gateway
-  try {
-    const puppeteerExtra = (await import('puppeteer-extra')).default;
-    const StealthPlugin = (await import('puppeteer-extra-plugin-stealth')).default;
-    puppeteerExtra.use(StealthPlugin());
+  // Step 3: Live redemption
+  const browser = await getBrowser();
+  const page = await browser.newPage();
 
-    const browser = await puppeteerExtra.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu',
-      ],
+  try {
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+
+    // Block images/fonts for speed
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      if (['image', 'font', 'media'].includes(req.resourceType())) req.abort();
+      else req.continue();
     });
 
-    try {
-      const page = await browser.newPage();
-      await page.setViewport({ width: 1280, height: 800 });
-      await page.setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-      );
+    const targetDenom = diamondLabel.replace(/ Diamonds?$/i, '').trim();
+    const targetChannelId = isUPBD ? '670' : '659';    // ── 1. Garena shop — clear session cookies first for fresh login ──
+    console.log(`[UniPin Worker] Navigating to Garena shop...`);
+    // Clear any existing Garena cookies to avoid session conflict
+    const garenaCookies = await page.cookies('https://shop.garena.my').catch(() => []);
+    if (garenaCookies.length > 0) {
+      await page.deleteCookie(...garenaCookies).catch(() => {});
+    }
+    await page.goto('https://shop.garena.my/app/100067/idlogin', {
+      waitUntil: 'domcontentloaded',
+      timeout: 20000,
+    });
 
-      // 1. Navigate to Garena Topup Center
-      console.log(`[UniPin Worker] Navigating to Garena Topup Center...`);
-      await page.goto('https://shop.garena.my/app/100067/idlogin', {
-        waitUntil: 'networkidle2',
-        timeout: 25000,
-      });
+    // ── 2. Enter UID ──
+    console.log(`[UniPin Worker] Entering UID...`);
+    await page.waitForSelector('input[placeholder*="player ID"], input.form-input', { timeout: 8000 });
+    await page.type('input[placeholder*="player ID"], input.form-input', uid, { delay: 20 });
+    await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button'));
+      for (const b of btns) { if (b.innerText.includes('Login')) { b.click(); return; } }
+    });
 
-      // 2. Login with Player UID
-      console.log(`[UniPin Worker] Entering Player UID ${uid}...`);
-      await page.type('input[placeholder*="player ID"], input.form-input', uid, { delay: 40 });
-      
-      const loginButtons = await page.$$('button');
-      for (const b of loginButtons) {
-        const text = await page.evaluate(el => el.innerText, b);
-        if (text.includes('Login')) {
-          await b.click();
-          break;
-        }
+    // Wait for account + package list
+    await page.waitForFunction(() => {
+      const text = document.body.innerText || '';
+      return text.includes('Player ID') || text.includes('Diamond') || text.includes('Top-up Amount') || text.includes('Username');
+    }, { timeout: 10000 }).catch(() => {});
+
+    // ── Extract player name from Garena page (multi-line innerText) ──
+    const resolvedPlayerName = await page.evaluate(() => {
+      const fullText = document.body.innerText || '';
+      const m = fullText.match(/Username[:\s]+([^\n\r]+)/i);
+      if (m && m[1]) {
+        const name = m[1].replace(/Player ID.*/i, '').trim();
+        if (name && name.length > 0 && name.length < 50) return name;
       }
-      await new Promise((r) => setTimeout(r, 2500));
+      return null;
+    }).catch(() => null);
 
-      // 3. Select Matching Diamond Package
-      console.log(`[UniPin Worker] Selecting ${diamondLabel} package on Garena...`);
-      const targetDenom = diamondLabel.replace(/ Diamonds?$/i, '').trim(); // e.g. "240"
-      
-      await page.evaluate((denom) => {
-        const elements = Array.from(document.querySelectorAll('div, span, button'));
-        for (const el of elements) {
-          const txt = (el.innerText || '').trim();
-          if (txt === `${denom} Diamond` || txt === `${denom} Diamonds` || txt === denom || (denom.includes('Membership') && txt.includes(denom))) {
-            const clickable = el.closest('button, div[role="button"], [tabindex]') || el;
-            clickable.click();
-            return;
-          }
-        }
-      }, targetDenom);
+    if (resolvedPlayerName && resolvedPlayerName.length > 0) {
+      playerName = resolvedPlayerName;
+      console.log(`[UniPin Worker] ✅ Player name: ${playerName}`);
+    }
 
-      await new Promise((r) => setTimeout(r, 1200));
 
-      // 4. Click Proceed to Payment
-      console.log(`[UniPin Worker] Proceeding to UniPin gateway...`);
-      const proceedBtns = await page.$$('button, a');
-      for (const b of proceedBtns) {
-        const txt = await page.evaluate(e => e.innerText ? e.innerText.trim() : '', b);
-        if (txt.includes('Proceed to Payment') || txt.includes('Payment')) {
-          await b.click();
-          break;
-        }
-      }
-      await new Promise((r) => setTimeout(r, 4500));
-
-      // 5. On UniBox Select Denomination screen
-      console.log(`[UniPin Worker] Selecting denomination on UniBox for '${targetDenom}'...`);
-      await page.waitForFunction(() => {
-        const text = document.body.innerText || '';
-        return text.includes('Select Amount') || text.includes('Diamond') || text.includes('Membership');
-      }, { timeout: 15000 }).catch(() => {});
-
-      await new Promise((r) => setTimeout(r, 1500));
-
-      const clickedDenom = await page.evaluate((denom) => {
-        const all = Array.from(document.querySelectorAll('div, button, a, span, p, li'));
-        for (const el of all) {
-          const txt = (el.innerText || el.textContent || '').trim();
-          if (
-            txt === `${denom} Diamond` || 
-            txt === `${denom} Diamonds` || 
-            txt.replace(/\s+/g, ' ') === `${denom} Diamond` ||
-            txt.replace(/\s+/g, ' ') === `${denom} Diamonds` ||
-            (denom.includes('Membership') && txt.toLowerCase().includes(denom.toLowerCase()))
-          ) {
-            const target = (el.closest('button, a, div[role="button"], li') || el) as HTMLElement;
-            target.scrollIntoView({ behavior: 'auto', block: 'center' });
-            target.click();
-            target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-            return true;
-          }
-        }
-        return false;
-      }, targetDenom);
-
-      console.log(`[UniPin Worker] Denomination click result:`, clickedDenom);
-      await new Promise((r) => setTimeout(r, 4000));
-
-      // 6. Select UniPin Voucher channel (Channel ID 659 for BDMB, 670 for UPBD)
-      const targetChannelId = isUPBD ? '670' : '659';
-      console.log(`[UniPin Worker] Selecting payment channel ${targetChannelId} (BDMB/UPBD)...`);
-      
-      await page.evaluate((channelId) => {
-        // Try direct selector
-        const el = document.querySelector(`#pc_div_${channelId}, [onclick*="${channelId}"], [data-channel-id="${channelId}"]`);
-        if (el) {
-          (el as HTMLElement).click();
-          el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+    // ── 3. Select Diamond Package ──
+    console.log(`[UniPin Worker] Selecting ${diamondLabel}...`);
+    await page.evaluate((denom) => {
+      const els = Array.from(document.querySelectorAll('div, span, button, li, p'));
+      for (const el of els) {
+        const txt = ((el as HTMLElement).innerText || el.textContent || '').trim();
+        if (txt === `${denom} Diamond` || txt === `${denom} Diamonds` || txt === denom ||
+          (denom.includes('Membership') && txt.includes(denom))) {
+          const clickable = el.closest('button, div[role="button"], [tabindex], li') || el;
+          (clickable as HTMLElement).click();
           return;
         }
+      }
+    }, targetDenom);
 
-        // Fallback search by text/image for UniPin Voucher
-        const all = Array.from(document.querySelectorAll('div, button, a, li, span'));
-        for (const item of all) {
-          const t = (item.innerText || item.textContent || '').toLowerCase();
-          if (t.includes('unipin voucher') || t.includes('unipin physical') || t.includes('bdmb') || t.includes('upbd') || t.includes('voucher')) {
-            const clickable = (item.closest('button, a, div[role="button"], li') || item) as HTMLElement;
-            clickable.click();
-            clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-            return;
-          }
-        }
-      }, targetChannelId);
+    await new Promise(r => setTimeout(r, 500));
 
-      await new Promise((r) => setTimeout(r, 3500));
+    // ── 4. Proceed to Payment ──
+    console.log(`[UniPin Worker] Clicking Proceed to Payment...`);
 
-      // 7. Fill in Serial & 4-part PIN with multiple selector fallbacks
-      console.log(`[UniPin Worker] Submitting Serial (${effectiveSerial}) & PIN to UniPin checkout...`);
-      
-      // Wait for voucher form or iframe
-      await page.waitForSelector('input#serial, input[name="serial"], input[placeholder*="Serial"], input[id*="serial"]', { timeout: 10000 }).catch(() => {});
-
-      const serialInput = await page.$('input#serial, input[name="serial"], input[placeholder*="Serial"], input[id*="serial"]');
-      if (serialInput && effectiveSerial) {
-        await serialInput.click({ count: 3 }).catch(() => {});
-        // Try typing formatted serial first, fallback if maxLength prevents dashes
-        await serialInput.type(effectiveSerial, { delay: 25 });
-        const currentSerialVal = await page.evaluate(el => (el as HTMLInputElement).value, serialInput);
-        if (!currentSerialVal || currentSerialVal.length < 5) {
-          await serialInput.type(effectiveSerial.replace(/-/g, ''), { delay: 25 });
+    await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button, a'));
+      for (const b of btns) {
+        const txt = ((b as HTMLElement).innerText || '').trim();
+        if (txt.includes('Proceed to Payment') || txt.includes('Payment') || txt.includes('পেমেন্ট')) {
+          (b as HTMLElement).click();
+          return;
         }
       }
+    });
 
-      // Split 16-digit PIN into 4 chunks of 4 digits
-      const cleanPinDigits = effectivePin.replace(/[^0-9]/g, '');
-      const pinParts = [
-        cleanPinDigits.substring(0, 4),
-        cleanPinDigits.substring(4, 8),
-        cleanPinDigits.substring(8, 12),
-        cleanPinDigits.substring(12, 16),
-      ];
+    // Wait for navigation or new tab — check pages() after a short wait
+    await new Promise(r => setTimeout(r, 3000));
 
-      const pin1 = await page.$('input#pin_1, input[name="pin_1"], input#pin1, input[name="pin1"]');
-      const pin2 = await page.$('input#pin_2, input[name="pin_2"], input#pin2, input[name="pin2"]');
-      const pin3 = await page.$('input#pin_3, input[name="pin_3"], input#pin3, input[name="pin3"]');
-      const pin4 = await page.$('input#pin_4, input[name="pin_4"], input#pin4, input[name="pin4"]');
-      const singlePinInput = await page.$('input#pin, input[name="pin"], input[placeholder*="PIN"], input[type="password"]');
+    // Check if UniBox opened in a new tab
+    let uniboxPage: Page = page;
+    try {
+      const allPages = await browser.pages() as unknown as Page[];
+      const uniboxTab = allPages.find(p => {
+        try {
+          const url = (p as any).url ? (p as any).url() : '';
+          return url.includes('unipin.com') || url.includes('unibox');
+        } catch { return false; }
+      });
 
-      if (pin1 && pin2 && pin3 && pin4) {
-        if (pinParts[0]) await pin1.type(pinParts[0], { delay: 25 });
-        if (pinParts[1]) await pin2.type(pinParts[1], { delay: 25 });
-        if (pinParts[2]) await pin3.type(pinParts[2], { delay: 25 });
-        if (pinParts[3]) await pin4.type(pinParts[3], { delay: 25 });
-      } else if (singlePinInput) {
-        await singlePinInput.type(cleanPinDigits, { delay: 25 });
-      }
-
-      await new Promise((r) => setTimeout(r, 1000));
-
-      // 8. Submit redemption form
-      console.log(`[UniPin Worker] Clicking confirm / submit button...`);
-      const submitBtn = await page.$('input[type="submit"], button[type="submit"], button.btn-primary, #btn-submit, #submit_button');
-      if (submitBtn) {
-        await submitBtn.click();
-        await new Promise((r) => setTimeout(r, 6000));
+      if (uniboxTab && uniboxTab !== page) {
+        console.log(`[UniPin Worker] UniBox opened in new tab!`);
+        uniboxPage = uniboxTab;
       } else {
-        await page.evaluate(() => {
-          const btns = Array.from(document.querySelectorAll('button, input[type="submit"], a.btn'));
-          for (const b of btns) {
-            const t = (b as HTMLElement).innerText || (b as HTMLInputElement).value || '';
-            if (t.toLowerCase().includes('submit') || t.toLowerCase().includes('confirm') || t.toLowerCase().includes('redeem') || t.includes('নিশ্চিত')) {
-              (b as HTMLElement).click();
-              return;
-            }
+        console.log(`[UniPin Worker] UniBox on same page. URL: ${page.url()}`);
+      }
+    } catch {
+      // Fallback: stay on same page
+    }
+
+
+    // ── 5. Wait for UniBox denomination screen ──
+    console.log(`[UniPin Worker] Waiting for UniBox denomination screen...`);
+    await uniboxPage.waitForFunction(() => {
+      const text = document.body.innerText || '';
+      return text.includes('Select Amount') || text.includes('Diamond') || text.includes('UniPin');
+    }, { timeout: 15000 }).catch(() => {});
+
+    // ── 6. Click denomination — this navigates to channel select page ──
+    console.log(`[UniPin Worker] Selecting denomination '${targetDenom}' on UniBox...`);
+    const denomNavPromise = uniboxPage.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {});
+
+    await uniboxPage.evaluate((denom) => {
+      const all = Array.from(document.querySelectorAll('div, button, a, span, p, li'));
+      for (const el of all) {
+        const txt = ((el as HTMLElement).innerText || el.textContent || '').trim();
+        if (txt === `${denom} Diamond` || txt === `${denom} Diamonds` ||
+          txt.replace(/\s+/g, ' ') === `${denom} Diamond` || txt.replace(/\s+/g, ' ') === `${denom} Diamonds` ||
+          (denom.includes('Membership') && txt.toLowerCase().includes(denom.toLowerCase()))) {
+          const target = (el.closest('button, a, div[role="button"], li') || el) as HTMLElement;
+          target.scrollIntoView({ behavior: 'auto', block: 'center' });
+          target.click();
+          target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+          return true;
+        }
+      }
+      return false;
+    }, targetDenom).catch(() => {});
+
+    await denomNavPromise;
+    console.log(`[UniPin Worker] After denom nav. URL: ${uniboxPage.url()}`);
+
+    // ── 7. On channel select page — click Physical Voucher (first item under Physical Vouchers) ──
+    // This page shows "Physical Vouchers" and "Wallet" sections (images blocked, so no text on items)
+    console.log(`[UniPin Worker] Clicking Physical Voucher channel...`);
+    const voucherNavPromise = uniboxPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {});
+
+    await uniboxPage.evaluate((channelId) => {
+      // Try ID-based selector first
+      const byId = document.querySelector(`#pc_div_${channelId}, [onclick*="${channelId}"], [data-channel-id="${channelId}"]`);
+      if (byId) {
+        (byId as HTMLElement).click();
+        byId.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+        return 'id';
+      }
+
+      // Try text-based match (bdmb, voucher, physical)
+      const all = Array.from(document.querySelectorAll('div, button, a, li, span'));
+      for (const item of all) {
+        const t = ((item as HTMLElement).innerText || item.textContent || '').toLowerCase();
+        if (t.includes('bdmb') || t.includes('upbd') || t.includes('unipin voucher') || t.includes('unipin physical')) {
+          const clickable = (item.closest('button, a, div[role="button"], li') || item) as HTMLElement;
+          clickable.click();
+          clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+          return 'text';
+        }
+      }
+
+      // Fallback: click first item under "Physical Vouchers" section
+      const physicalHeader = Array.from(document.querySelectorAll('div, span, h2, h3, p')).find(el => {
+        const t = ((el as HTMLElement).innerText || el.textContent || '').toLowerCase();
+        return t.includes('physical voucher') || t.includes('physical');
+      });
+      if (physicalHeader) {
+        const section = physicalHeader.closest('div') || physicalHeader.parentElement;
+        if (section) {
+          const firstClickable = section.querySelector('a, button, div[class*="item"], div[class*="card"], div[class*="option"]') as HTMLElement;
+          if (firstClickable) {
+            firstClickable.click();
+            firstClickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+            return 'physical-section';
           }
-        });
-        await new Promise((r) => setTimeout(r, 6000));
-      }
-
-      // 9. Inspect post-submission page for success or error indicators
-      const currentUrl = page.url();
-      const finalPageText = await page.evaluate(() => document.body.innerText || '');
-      
-      const isFailed = 
-        currentUrl.includes('/error') ||
-        currentUrl.includes('Consumed') ||
-        finalPageText.includes('Consumed Voucher') ||
-        finalPageText.includes('Invalid serial or pin') ||
-        finalPageText.includes('Voucher already used') ||
-        finalPageText.includes('Invalid code') ||
-        finalPageText.includes('Code expired') ||
-        finalPageText.includes('Transaction Failed') ||
-        finalPageText.includes('Payment Failed') ||
-        finalPageText.includes('Security Check') ||
-        finalPageText.includes('Cloudflare') ||
-        finalPageText.includes('Verify you are human') ||
-        finalPageText.includes('ভাউচারটি ইতিমধ্যে ব্যবহৃত হয়েছে') ||
-        finalPageText.includes('ভুল পিন') ||
-        finalPageText.includes('ব্যর্থ হয়েছে');
-
-      const isConfirmedSuccess =
-        !isFailed && (
-          finalPageText.includes('Transaction Successful') ||
-          finalPageText.includes('Payment Successful') ||
-          finalPageText.includes('Redemption Successful') ||
-          finalPageText.includes('Thank you') ||
-          finalPageText.includes('Invoice') ||
-          finalPageText.includes('লেনদেন সফল') ||
-          finalPageText.includes('পেমেন্ট সফল') ||
-          currentUrl.includes('success') ||
-          currentUrl.includes('receipt') ||
-          currentUrl.includes('invoice')
-        );
-
-      // Save screenshot for diagnostics if not confirmed success
-      try {
-        const fs = await import('fs');
-        const path = await import('path');
-        const debugDir = path.join(process.cwd(), 'public', 'debug');
-        if (!fs.existsSync(debugDir)) {
-          fs.mkdirSync(debugDir, { recursive: true });
         }
-        await page.screenshot({ path: path.join(debugDir, `unipin_last_run_${Date.now()}.png`), fullPage: true });
-      } catch (shotErr) {
-        console.warn('[UniPin Worker] Could not save debug screenshot:', shotErr);
       }
 
-      if (isFailed || (!isConfirmedSuccess && (finalPageText.includes('serial') || finalPageText.includes('PIN')))) {
-        await browser.close();
-        let reasonMsg = 'UniPin Voucher redemption failed: Voucher is invalid, expired, or already used.';
-        if (finalPageText.includes('Consumed Voucher') || currentUrl.includes('Consumed') || finalPageText.includes('Voucher already used') || finalPageText.includes('ব্যবহৃত')) {
-          reasonMsg = 'UniPin Voucher is ALREADY USED / CONSUMED (ইতিমধ্যেই ব্যবহৃত ভাউচার).';
-        } else if (finalPageText.includes('Invalid serial') || finalPageText.includes('ভুল')) {
-          reasonMsg = 'UniPin Voucher Serial or PIN is INVALID.';
-        } else if (finalPageText.includes('Cloudflare') || finalPageText.includes('Security Check')) {
-          reasonMsg = 'UniPin Gateway blocked by Cloudflare/CAPTCHA challenge.';
-        }
+      // Last resort: click the very first anchor/button on the page
+      const firstLink = document.querySelector('a[href*="unibox"], a[href*="voucher"]') as HTMLElement;
+      if (firstLink) { firstLink.click(); return 'first-link'; }
 
-        console.error(`[UniPin Worker] Redemption rejected: ${reasonMsg}`);
-        return {
-          success: false,
-          message: reasonMsg,
-          errorReason: 'INVALID_VOUCHER',
-          voucherType,
-          playerName,
-        };
-      }
+      return 'none';
+    }, targetChannelId).catch(() => {});
 
-      await browser.close();
-      const orderId = `UP_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+    await voucherNavPromise;
+    console.log(`[UniPin Worker] After voucher channel nav. URL: ${uniboxPage.url()}`);
 
-      return {
-        success: true,
-        message: `Top-up of ${diamondLabel} successfully redeemed for Player ${playerName} (UID: ${uid})!`,
-        voucherType,
-        playerName,
-        orderId,
-      };
-    } catch (innerError: any) {
-      try { await browser.close(); } catch {}
-      console.error('[UniPin Worker] Automation error:', innerError?.message);
-      
+    // ── 8. MANDATORY: wait for serial/pin form ──
+    console.log(`[UniPin Worker] Waiting for serial/PIN input form...`);
+    const FORM_SELECTOR = 'input[placeholder*="BDMB"], input[placeholder*="Serial"], input[placeholder*="serial"], input[name="serial"], input[id*="serial"]';
+
+    let formFound = false;
+    try {
+      await uniboxPage.waitForSelector(FORM_SELECTOR, { timeout: 12000 });
+      formFound = true;
+      console.log(`[UniPin Worker] ✅ Serial/PIN form found!`);
+    } catch {
+      await saveDebugScreenshot(uniboxPage, 'form_not_found');
+      console.error('[UniPin Worker] ❌ Serial/PIN form NOT found. CAPTCHA or flow changed.');
       return {
         success: false,
-        message: `UniPin automation error: ${innerError?.message || 'Gateway connection issue'}.`,
+        message: 'UniPin voucher form could not load. Possible CAPTCHA or gateway change.',
         errorReason: 'WORKER_ERROR',
+
         voucherType,
         playerName,
       };
     }
-  } catch (launchError: any) {
-    console.error('[UniPin Worker] Puppeteer launch error:', launchError?.message);
+
+    // ── 9. Fill Serial ──
+    console.log(`[UniPin Worker] Filling Serial: ${effectiveSerial}...`);
+    const serialInput = await uniboxPage.$(FORM_SELECTOR);
+    if (serialInput && effectiveSerial) {
+      await serialInput.click({ count: 3 }).catch(() => {});
+      await serialInput.type(effectiveSerial, { delay: 15 });
+    }
+
+    // ── 10. Fill PIN ──
+    const cleanPinDigits = effectivePin.replace(/[^0-9]/g, '');
+    const pinParts = [
+      cleanPinDigits.substring(0, 4),
+      cleanPinDigits.substring(4, 8),
+      cleanPinDigits.substring(8, 12),
+      cleanPinDigits.substring(12, 16),
+    ];
+
+    const pin1 = await uniboxPage.$('input#pin_1, input[name="pin_1"], input#pin1');
+    const pin2 = await uniboxPage.$('input#pin_2, input[name="pin_2"], input#pin2');
+    const pin3 = await uniboxPage.$('input#pin_3, input[name="pin_3"], input#pin3');
+    const pin4 = await uniboxPage.$('input#pin_4, input[name="pin_4"], input#pin4');
+    const singlePin = await uniboxPage.$('input#pin, input[name="pin"], input[placeholder*="PIN"], input[placeholder*="pin"]');
+
+    if (pin1 && pin2 && pin3 && pin4) {
+      if (pinParts[0]) await pin1.type(pinParts[0], { delay: 15 });
+      if (pinParts[1]) await pin2.type(pinParts[1], { delay: 15 });
+      if (pinParts[2]) await pin3.type(pinParts[2], { delay: 15 });
+      if (pinParts[3]) await pin4.type(pinParts[3], { delay: 15 });
+    } else if (singlePin) {
+      await singlePin.type(cleanPinDigits, { delay: 15 });
+    }
+
+    await saveDebugScreenshot(uniboxPage, 'before_confirm');
+    await new Promise(r => setTimeout(r, 400));
+
+    // ── 11. Click CONFIRM ──
+    console.log(`[UniPin Worker] Clicking CONFIRM...`);
+    const confirmBtn = await uniboxPage.$('button[type="submit"], input[type="submit"], button.btn-primary, #btn-submit, #submit_button');
+    if (confirmBtn) {
+      await confirmBtn.click();
+    } else {
+      await uniboxPage.evaluate(() => {
+        const btns = Array.from(document.querySelectorAll('button, input[type="submit"]'));
+        for (const b of btns) {
+          const t = ((b as HTMLElement).innerText || (b as HTMLInputElement).value || '').toLowerCase();
+          if (t.includes('confirm') || t.includes('submit') || t.includes('redeem') || t.includes('নিশ্চিত')) {
+            (b as HTMLElement).click();
+            return;
+          }
+        }
+      });
+    }
+
+    // ── 12. Wait for result ──
+    await uniboxPage.waitForFunction(() => {
+      const text = document.body.innerText || '';
+      const url = window.location.href;
+      return (
+        text.includes('Successful') || text.includes('Thank you') || text.includes('Invoice') ||
+        text.includes('সফল') || text.includes('Consumed') || text.includes('Invalid') ||
+        text.includes('ব্যবহৃত') || text.includes('ব্যর্থ') || text.includes('Failed') ||
+        text.includes('Security Check') || url.includes('success') || url.includes('error') || url.includes('receipt')
+      );
+    }, { timeout: 10000 }).catch(() => {});
+
+    const finalUrl = uniboxPage.url();
+    const finalText = await uniboxPage.evaluate(() => document.body.innerText || '');
+    await saveDebugScreenshot(uniboxPage, 'after_confirm');
+
+    // ── 13. Evaluate result ──
+    const isFailed =
+      finalUrl.includes('/error') || finalUrl.includes('Consumed') ||
+      finalText.includes('Consumed Voucher') || finalText.includes('Invalid serial or pin') ||
+      finalText.includes('Voucher already used') || finalText.includes('Invalid code') ||
+      finalText.includes('Code expired') || finalText.includes('Transaction Failed') ||
+      finalText.includes('Payment Failed') || finalText.includes('Security Check') ||
+      finalText.includes('Cloudflare') || finalText.includes('Verify you are human') ||
+      finalText.includes('ভাউচারটি ইতিমধ্যে ব্যবহৃত হয়েছে') ||
+      finalText.includes('ভুল পিন') || finalText.includes('ব্যর্থ হয়েছে');
+
+    const isConfirmedSuccess =
+      !isFailed && (
+        finalText.includes('Transaction Successful') || finalText.includes('Payment Successful') ||
+        finalText.includes('Redemption Successful') || finalText.includes('Thank you') ||
+        finalText.includes('Invoice') || finalText.includes('লেনদেন সফল') ||
+        finalText.includes('পেমেন্ট সফল') || finalUrl.includes('success') ||
+        finalUrl.includes('receipt') || finalUrl.includes('invoice')
+      );
+
+    if (isFailed || (!isConfirmedSuccess && (finalText.toLowerCase().includes('serial') || finalText.toUpperCase().includes('PIN')))) {
+      let reasonMsg = 'UniPin Voucher redemption failed: Voucher is invalid, expired, or already used.';
+      if (finalText.includes('Consumed Voucher') || finalUrl.includes('Consumed') ||
+        finalText.includes('Voucher already used') || finalText.includes('ব্যবহৃত')) {
+        reasonMsg = 'UniPin Voucher is ALREADY USED / CONSUMED (ইতিমধ্যেই ব্যবহৃত ভাউচার).';
+      } else if (finalText.includes('Invalid serial') || finalText.includes('ভুল')) {
+        reasonMsg = 'UniPin Voucher Serial or PIN is INVALID.';
+      } else if (finalText.includes('Cloudflare') || finalText.includes('Security Check')) {
+        reasonMsg = 'UniPin Gateway blocked by Cloudflare/CAPTCHA.';
+      }
+      console.error(`[UniPin Worker] ❌ ${reasonMsg}`);
+      return { success: false, message: reasonMsg, errorReason: 'INVALID_VOUCHER', voucherType, playerName };
+    }
+
+    const orderId = `UP_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+    console.log(`[UniPin Worker] ✅ Success! OrderID: ${orderId}`);
+    return {
+      success: true,
+      message: `Top-up of ${diamondLabel} successfully redeemed for Player ${playerName} (UID: ${uid})!`,
+      voucherType,
+      playerName,
+      orderId,
+    };
+
+  } catch (error: any) {
+    console.error('[UniPin Worker] Automation error:', error?.message);
     return {
       success: false,
-      message: `Browser automation worker could not launch: ${launchError?.message}`,
+      message: `UniPin automation worker error: ${error?.message || 'Gateway connection issue'}.`,
       errorReason: 'WORKER_ERROR',
       voucherType,
       playerName,
     };
+  } finally {
+    try { await page.close(); } catch {}
   }
 }
