@@ -1,11 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { LayoutDashboard, LogOut } from 'lucide-react';
 
 export default function ApiDocsPage() {
   const [activeTab, setActiveTab] = useState<'topup' | 'uid' | 'errors'>('topup');
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'user'>('user');
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const cookies = document.cookie;
+      if (cookies.includes('admin_session=')) {
+        setIsLoggedIn(true);
+        if (cookies.includes('user_role=admin')) {
+          setUserRole('admin');
+        } else {
+          setUserRole('user');
+        }
+      }
+    }
+  }, []);
+
+  function handleSignOut() {
+    document.cookie = 'admin_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    document.cookie = 'user_role=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    setIsLoggedIn(false);
+  }
+
+  const dashboardHref = userRole === 'admin' ? '/admin' : '/userDashboard';
 
   const nodeSnippetTopup = `const axios = require('axios');
 
@@ -86,9 +111,39 @@ async function validatePlayerUid() {
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4 text-xs font-semibold">
-            <Link href="/" className="text-slate-400 hover:text-cyan-400">Home</Link>
-            <Link href="/userDashboard" className="text-slate-400 hover:text-cyan-400">User Portal</Link>
-            <Link href="/login" className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-semibold text-white shadow-md shadow-cyan-600/30">Sign In</Link>
+            <Link href="/" className="text-slate-400 hover:text-cyan-400 transition-colors">
+              Home
+            </Link>
+            {isLoggedIn ? (
+              <>
+                <Link
+                  href={dashboardHref}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold shadow-md shadow-cyan-600/30 transition-all hover:scale-105"
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <span>Dashboard</span>
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-1 text-slate-400 hover:text-rose-400 transition-colors px-2 py-1"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/userDashboard" className="text-slate-400 hover:text-cyan-400 transition-colors">
+                  User Portal
+                </Link>
+                <Link
+                  href="/login"
+                  className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-semibold text-white shadow-md shadow-cyan-600/30 transition-all hover:scale-105"
+                >
+                  Sign In
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
