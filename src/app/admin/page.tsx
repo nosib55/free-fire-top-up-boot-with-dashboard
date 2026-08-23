@@ -39,11 +39,16 @@ export default function AdminAnalyticsPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/stats');
-      const data = await res.json();
-      if (data.success) {
-        if (data.stats) setStats(data.stats);
-        if (data.weeklyTraffic) setWeeklyTraffic(data.weeklyTraffic);
-        if (data.recentLogs) setRecentLogs(data.recentLogs);
+      const text = await res.text();
+      try {
+        const data = JSON.parse(text);
+        if (data.success) {
+          if (data.stats) setStats(data.stats);
+          if (data.weeklyTraffic) setWeeklyTraffic(data.weeklyTraffic);
+          if (data.recentLogs) setRecentLogs(data.recentLogs);
+        }
+      } catch {
+        // Dev server compilation / HTML error page guard
       }
     } catch (e) {
       console.error(e);
@@ -51,6 +56,7 @@ export default function AdminAnalyticsPage() {
       setLoading(false);
     }
   }
+
 
   const successRate =
     stats.totalRequests > 0

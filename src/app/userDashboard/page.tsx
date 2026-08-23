@@ -56,7 +56,8 @@ export default function UserDashboardPage() {
   async function fetchBrandSettings() {
     try {
       const res = await fetch('/api/settings');
-      const data = await res.json();
+      const text = await res.text();
+      const data = JSON.parse(text);
       if (data.success && data.settings) {
         setBrandSettings({
           siteName: data.settings.siteName || 'Apex Top-Up',
@@ -72,7 +73,8 @@ export default function UserDashboardPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/user/my-key');
-      const data = await res.json();
+      const text = await res.text();
+      const data = JSON.parse(text);
 
       if (data.success) {
         if (data.user) {
@@ -101,6 +103,7 @@ export default function UserDashboardPage() {
       setLoading(false);
     }
   }
+
 
   function copyKey() {
     if (!activeKey) return;

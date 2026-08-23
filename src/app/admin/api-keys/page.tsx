@@ -41,9 +41,14 @@ export default function ApiKeyManagerPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/keys/list');
-      const data = await res.json();
-      if (data.success) {
-        setKeys(data.keys || []);
+      const text = await res.text();
+      try {
+        const data = JSON.parse(text);
+        if (data.success) {
+          setKeys(data.keys || []);
+        }
+      } catch {
+        // Dev server compilation guard
       }
     } catch (e) {
       console.error(e);
@@ -51,6 +56,7 @@ export default function ApiKeyManagerPage() {
       setLoading(false);
     }
   }
+
 
   function handleAutoGenerate16Token() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';

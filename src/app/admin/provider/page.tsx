@@ -38,9 +38,14 @@ export default function ProviderGatewayPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/provider/status');
-      const data = await res.json();
-      if (data.success && data.provider) {
-        setProviderData(data.provider);
+      const text = await res.text();
+      try {
+        const data = JSON.parse(text);
+        if (data.success && data.provider) {
+          setProviderData(data.provider);
+        }
+      } catch {
+        // Dev server compilation guard
       }
     } catch (e) {
       console.error(e);
@@ -48,6 +53,7 @@ export default function ProviderGatewayPage() {
       setLoading(false);
     }
   }
+
 
   async function handleTestConnection() {
     setTesting(true);
