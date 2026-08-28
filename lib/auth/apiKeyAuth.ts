@@ -41,27 +41,6 @@ export async function validateApiKey(keyString: string, clientIp?: string): Prom
   await dbConnect();
   let apiKeyDoc = await ApiKey.findOne({ key: keyString });
 
-  if (!apiKeyDoc && (keyString === 'DEV_DEMO_9X8Y7Z' || keyString.startsWith('DEV_DEMO_'))) {
-    // Auto-seed developer sandbox key for friction-free testing
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 365);
-    try {
-      apiKeyDoc = await ApiKey.create({
-        key: keyString,
-        name: 'Developer Sandbox Key',
-        role: 'client',
-        totalHits: 1000,
-        remainingHits: 1000,
-        usedHits: 0,
-        rateLimitRPS: 10,
-        expiresAt,
-        status: 'active',
-      });
-    } catch {
-      apiKeyDoc = await ApiKey.findOne({ key: keyString });
-    }
-  }
-
   if (!apiKeyDoc) {
     return { valid: false, message: 'Invalid API Key provided. Please create or copy a valid key from Admin/Reseller dashboard.', statusCode: 401 };
   }

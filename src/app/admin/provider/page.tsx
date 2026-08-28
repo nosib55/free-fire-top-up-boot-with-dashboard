@@ -16,14 +16,14 @@ import {
 
 export default function ProviderGatewayPage() {
   const [providerData, setProviderData] = useState<any>({
-    providerApiKey: 'PROV_MASTER_9X8Y7Z6A',
+    providerApiKey: 'STANDBY',
     upstreamServerUrl: 'https://shop.garena.my/api/process-order',
-    connectionStatus: 'CONNECTED',
-    totalAllocatedHits: 100000,
-    consumedHits: 34210,
-    availableHits: 65790,
-    expirationDate: '2026-12-31T23:59:59.000Z',
-    latencyMs: 48,
+    connectionStatus: 'STANDBY',
+    totalAllocatedHits: 0,
+    consumedHits: 0,
+    availableHits: 0,
+    expirationDate: null,
+    latencyMs: 0,
   });
 
   const [loading, setLoading] = useState(false);

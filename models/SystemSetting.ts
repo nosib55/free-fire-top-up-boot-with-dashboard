@@ -95,9 +95,9 @@ const SystemSettingSchema = new Schema<ISystemSetting>(
     enterprisePrice: { type: Number, default: 5000 },
 
     // Balance Fields
-    unipinWalletBalance: { type: Number, default: 14500 },
-    garenaShellsBalance: { type: Number, default: 2400 },
-    bdgamesbazarBalance: { type: Number, default: 5200 },
+    unipinWalletBalance: { type: Number, default: 0 },
+    garenaShellsBalance: { type: Number, default: 0 },
+    bdgamesbazarBalance: { type: Number, default: 0 },
     lastBalanceSyncAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
