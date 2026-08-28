@@ -19,8 +19,9 @@ interface UserItem {
   name: string;
   email: string;
   phone?: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'reseller' | 'user';
   status: 'active' | 'suspended';
+  balance?: number;
   hitBalance?: number;
   createdAt: string;
 }
@@ -35,7 +36,7 @@ export default function UserManagementPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<'admin' | 'user'>('user');
+  const [role, setRole] = useState<'admin' | 'reseller' | 'user'>('user');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,7 +44,9 @@ export default function UserManagementPage() {
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
-  const [editRole, setEditRole] = useState<'admin' | 'user'>('user');
+  const [editRole, setEditRole] = useState<'admin' | 'reseller' | 'user'>('user');
+  const [editBalance, setEditBalance] = useState<number | string>(0);
+  const [editHitBalance, setEditHitBalance] = useState<number | string>(1000);
   const [editPassword, setEditPassword] = useState('');
 
   useEffect(() => {
@@ -129,6 +132,8 @@ export default function UserManagementPage() {
           name: editName,
           phone: editPhone,
           role: editRole,
+          balance: parseFloat(String(editBalance)) || 0,
+          hitBalance: Number(editHitBalance),
           password: editPassword || undefined,
         }),
       });
@@ -148,7 +153,9 @@ export default function UserManagementPage() {
     setEditUserId(u._id);
     setEditName(u.name);
     setEditPhone(u.phone || '');
-    setEditRole(u.role === 'admin' ? 'admin' : 'user');
+    setEditRole(u.role === 'admin' ? 'admin' : u.role === 'reseller' ? 'reseller' : 'user');
+    setEditBalance(u.balance ?? 0);
+    setEditHitBalance(u.hitBalance ?? 1000);
     setEditPassword('');
   }
 
@@ -163,9 +170,9 @@ export default function UserManagementPage() {
       {/* Page Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">User Management (2-Tier Roles)</h1>
+          <h1 className="text-2xl font-black text-white tracking-tight">User Management (3-Tier Roles)</h1>
           <p className="text-xs text-slate-400 mt-1">
-            Manage root administrators, client users, role assignments, and account status.
+            Manage root administrators, B2B resellers, client users, role assignments, and account status.
           </p>
         </div>
 
@@ -200,6 +207,7 @@ export default function UserManagementPage() {
                 <th className="p-4">Phone</th>
                 <th className="p-4">Role</th>
                 <th className="p-4">Account Status</th>
+                <th className="p-4">Wallet Balance</th>
                 <th className="p-4">Hit Balance</th>
                 <th className="p-4">Created Date</th>
                 <th className="p-4 text-right">Actions</th>
@@ -208,7 +216,7 @@ export default function UserManagementPage() {
             <tbody className="divide-y divide-slate-800">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-500">
+                  <td colSpan={8} className="p-8 text-center text-slate-500">
                     {loading ? 'Loading users...' : 'No users found.'}
                   </td>
                 </tr>
@@ -246,6 +254,8 @@ export default function UserManagementPage() {
                         className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wider uppercase ${
                           u.role === 'admin'
                             ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                            : u.role === 'reseller'
+                            ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
                             : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                         }`}
                       >
@@ -263,6 +273,10 @@ export default function UserManagementPage() {
                       >
                         {u.status === 'active' ? 'Active' : 'Suspended'}
                       </span>
+                    </td>
+
+                    <td className="p-4 font-mono text-emerald-400 font-bold">
+                      ৳{Number(u.balance ?? 0).toLocaleString()}
                     </td>
 
                     <td className="p-4 font-mono text-cyan-300 font-bold">
@@ -354,8 +368,9 @@ export default function UserManagementPage() {
                   onChange={(e: any) => setRole(e.target.value)}
                   className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-white font-bold"
                 >
-                  <option value="user">User (Client / Reseller)</option>
-                  <option value="admin">Admin (Master Controller)</option>
+                  <option value="user">User (Client / Developer)</option>
+                  <option value="reseller">Reseller (B2B Partner)</option>
+                  <option value="admin">Super Admin (Master Controller)</option>
                 </select>
               </div>
 
@@ -423,9 +438,34 @@ export default function UserManagementPage() {
                   onChange={(e: any) => setEditRole(e.target.value)}
                   className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-white font-bold"
                 >
-                  <option value="user">User (Client / Reseller)</option>
-                  <option value="admin">Admin (Master Controller)</option>
+                  <option value="user">User (Client / Developer)</option>
+                  <option value="reseller">Reseller (B2B Partner)</option>
+                  <option value="admin">Super Admin (Master Controller)</option>
                 </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1 font-medium">Wallet Balance (BDT ৳)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={editBalance}
+                    onChange={(e) => setEditBalance(e.target.value)}
+                    className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-emerald-400 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 mb-1 font-medium">API Hit Quota</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editHitBalance}
+                    onChange={(e) => setEditHitBalance(e.target.value)}
+                    className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-cyan-300 font-mono font-bold"
+                  />
+                </div>
               </div>
 
               <div>

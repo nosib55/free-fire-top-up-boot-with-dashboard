@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/utils/db';
 import ApiKey from '@/models/ApiKey';
 import Reseller from '@/models/Reseller';
+import User from '@/models/User';
 
 export async function GET(request: Request) {
   await dbConnect();
@@ -11,7 +12,33 @@ export async function GET(request: Request) {
 
     const query = resellerUserId ? { resellerId: resellerUserId } : { role: 'client' };
     const clients = await ApiKey.find(query).populate('ownerId', 'name email').sort({ createdAt: -1 });
-    const resellerProfile = resellerUserId ? await Reseller.findOne({ userId: resellerUserId }) : null;
+    let resellerProfile = resellerUserId ? await Reseller.findOne({ userId: resellerUserId }) : null;
+
+    if (resellerUserId && !resellerProfile) {
+      const user = await User.findById(resellerUserId);
+      if (user && (user.role === 'reseller' || user.role === 'admin')) {
+        const cleanTag = (user.name || 'RSLR').replace(/[^a-zA-Z0-9]/g, '').substring(0, 5).toUpperCase() || 'RSLR';
+        try {
+          resellerProfile = await Reseller.create({
+            userId: user._id,
+            brandingTag: `${cleanTag}_${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
+            masterQuotaBalance: user.hitBalance && user.hitBalance > 0 ? user.hitBalance : 1000,
+            allocatedQuota: 0,
+            discountRate: 15,
+          });
+        } catch {
+          resellerProfile = await Reseller.findOne({ userId: resellerUserId });
+        }
+      }
+    }
+
+    if (resellerUserId && resellerProfile) {
+      const activeKey = await ApiKey.findOne({ ownerId: resellerUserId, status: 'active' }).sort({ createdAt: -1 });
+      if (activeKey && resellerProfile.masterQuotaBalance !== activeKey.remainingHits) {
+        resellerProfile.masterQuotaBalance = activeKey.remainingHits;
+        await resellerProfile.save();
+      }
+    }
 
     return NextResponse.json({
       success: true,

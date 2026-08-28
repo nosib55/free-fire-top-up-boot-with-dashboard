@@ -4,6 +4,8 @@ import dbConnect from '@/utils/db';
 import User from '@/models/User';
 import ApiKey from '@/models/ApiKey';
 
+import Reseller from '@/models/Reseller';
+
 export async function GET() {
   await dbConnect();
   try {
@@ -25,6 +27,22 @@ export async function GET() {
       );
     }
 
+    let resellerProfile = await Reseller.findOne({ userId: user._id });
+    if (!resellerProfile && (user.role === 'reseller' || user.role === 'admin')) {
+      const cleanTag = (user.name || 'RSLR').replace(/[^a-zA-Z0-9]/g, '').substring(0, 5).toUpperCase() || 'RSLR';
+      try {
+        resellerProfile = await Reseller.create({
+          userId: user._id,
+          brandingTag: `${cleanTag}_${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
+          masterQuotaBalance: user.hitBalance && user.hitBalance > 0 ? user.hitBalance : 1000,
+          allocatedQuota: 0,
+          discountRate: 15,
+        });
+      } catch {
+        resellerProfile = await Reseller.findOne({ userId: user._id });
+      }
+    }
+
     // Find the real API key assigned by Admin for this specific user
     const keyDoc = await ApiKey.findOne({
       $or: [{ ownerId: user._id }, { userRef: user._id }],
@@ -40,8 +58,23 @@ export async function GET() {
           name: user.name,
           email: user.email,
           role: user.role,
+          balance: user.balance || 0,
+          hitBalance: user.hitBalance || 0,
         },
+        resellerProfile: resellerProfile ? {
+          brandingTag: resellerProfile.brandingTag,
+          masterQuotaBalance: resellerProfile.masterQuotaBalance,
+          allocatedQuota: resellerProfile.allocatedQuota,
+          discountRate: resellerProfile.discountRate,
+        } : null,
       });
+    }
+
+    if (resellerProfile && keyDoc) {
+      if (resellerProfile.masterQuotaBalance !== keyDoc.remainingHits) {
+        resellerProfile.masterQuotaBalance = keyDoc.remainingHits;
+        await resellerProfile.save();
+      }
     }
 
     return NextResponse.json({
@@ -52,7 +85,15 @@ export async function GET() {
         name: user.name,
         email: user.email,
         role: user.role,
+        balance: user.balance || 0,
+        hitBalance: user.hitBalance || 0,
       },
+      resellerProfile: resellerProfile ? {
+        brandingTag: resellerProfile.brandingTag,
+        masterQuotaBalance: resellerProfile.masterQuotaBalance,
+        allocatedQuota: resellerProfile.allocatedQuota,
+        discountRate: resellerProfile.discountRate,
+      } : null,
       key: {
         key: keyDoc.key,
         name: keyDoc.name,

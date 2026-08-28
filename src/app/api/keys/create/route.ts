@@ -60,9 +60,19 @@ export async function POST(request: Request) {
       lastUpdated: new Date(),
     });
 
+    if (targetUser) {
+      targetUser.hitBalance = quota;
+      await targetUser.save();
+      const Reseller = (await import('@/models/Reseller')).default;
+      await Reseller.findOneAndUpdate(
+        { userId: targetUser._id },
+        { masterQuotaBalance: quota }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'API Key created successfully',
+      message: 'API Key generated successfully',
       apiKey: apiKeyDoc,
     });
   } catch (error: any) {

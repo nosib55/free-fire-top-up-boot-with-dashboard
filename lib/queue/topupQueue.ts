@@ -142,8 +142,43 @@ if (redisClient) {
   }
 }
 
+// Queue state control
+let isQueuePaused = false;
+
+export function pauseQueue(): boolean {
+  isQueuePaused = true;
+  if (topupQueue) {
+    topupQueue.pause().catch(() => {});
+  }
+  return true;
+}
+
+export function resumeQueue(): boolean {
+  isQueuePaused = false;
+  if (topupQueue) {
+    topupQueue.resume().catch(() => {});
+  }
+  return true;
+}
+
+export function getQueueControlStatus() {
+  return {
+    isPaused: isQueuePaused,
+    activeLocks: activeUidLocks.size,
+    isRedisConnected,
+  };
+}
+
 // Direct Execution Fallback (when Redis is offline or instant sync execution requested)
 export async function executeTopupDirect(data: TopUpJobData): Promise<AutomationResult> {
+  if (isQueuePaused) {
+    return {
+      success: false,
+      message: 'Worker queue is currently PAUSED for maintenance by Admin via Telegram/Dashboard. Please try again in a few minutes.',
+      errorReason: 'WORKER_ERROR',
+    };
+  }
+
   const locked = await acquireUidLock(data.uid);
   if (!locked) {
     return {

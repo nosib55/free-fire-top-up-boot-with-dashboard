@@ -47,6 +47,36 @@ export async function POST(request: Request) {
       );
     }
 
+    // 1.5 Package Rate & BDT Wallet Balance Check for Shell/Wallet pipelines
+    let requiredBdtPrice = 0;
+    let targetUser: any = null;
+
+    if (targetPipeline === 'GARENA_SHELLS' || targetPipeline === 'UNIPIN_WALLET') {
+      const SystemSetting = (await import('@/models/SystemSetting')).default;
+      const User = (await import('@/models/User')).default;
+      const settings = await SystemSetting.findOne();
+      const packageKey = itemType || diamondPackageId || '100_DIAMONDS';
+
+      const matchedRate = settings?.packageRates?.find(
+        (p: any) => p.packageId === packageKey || p.packageId.includes(packageKey)
+      );
+
+      requiredBdtPrice = matchedRate?.priceBdt || (packageKey.includes('25') ? 20 : packageKey.includes('50') ? 40 : 80);
+
+      if (apiKeyDoc.ownerId) {
+        targetUser = await User.findById(apiKeyDoc.ownerId);
+        if (targetUser && (targetUser.balance || 0) < requiredBdtPrice) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: `Insufficient BDT wallet balance. Required: ৳${requiredBdtPrice}, Available: ৳${targetUser.balance || 0}. Please recharge your account.`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // 2. Dispatch job to automation worker / concurrency queue
     const executionResult = await executeTopupDirect({
       jobId: `JOB_${Date.now()}`,
@@ -63,10 +93,27 @@ export async function POST(request: Request) {
     const latencyMs = Date.now() - startTime;
     await dbConnect();
 
-    // 3. Handle Quota Deduction / Abuse Defense logic based on outcome
+    // 3. Handle Quota & BDT Balance Deduction based on outcome
     if (executionResult.success) {
-      // SUCCESS: Deduct 1 hit on confirmed top-up
+      // Deduct 1 API hit
       await deductQuotaOnSuccess(apiKeyDoc._id.toString());
+
+      // Deduct BDT price from user wallet if Shell/Wallet pipeline
+      if (requiredBdtPrice > 0 && targetUser) {
+        targetUser.balance = Math.max(0, (targetUser.balance || 0) - requiredBdtPrice);
+        await targetUser.save();
+
+        const Transaction = (await import('@/models/Transaction')).default;
+        await Transaction.create({
+          txId: `TOPUP_${Date.now()}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+          userId: targetUser._id,
+          type: 'TOPUP_DEDUCTION',
+          amount: requiredBdtPrice,
+          hits: 1,
+          status: 'COMPLETED',
+          proof: `Deducted ৳${requiredBdtPrice} for ${itemType || diamondPackageId || 'Top-Up'} (Player UID: ${uid})`,
+        });
+      }
 
       await ApiLog.create({
         apiKey: apiKeyDoc.key,
@@ -74,7 +121,7 @@ export async function POST(request: Request) {
         endpoint: '/api/v1/topup',
         uid,
         voucherCode: effectiveCode ? `${effectiveCode.substring(0, 4)}****` : undefined,
-        requestData: { pipeline: targetPipeline, uid, diamondPackageId, itemType },
+        requestData: { pipeline: targetPipeline, uid, diamondPackageId, itemType, costBdt: requiredBdtPrice },
         responseData: executionResult,
         status: 'SUCCESS',
         latencyMs,
@@ -89,6 +136,8 @@ export async function POST(request: Request) {
           playerName: executionResult.playerName,
           orderId: executionResult.orderId,
           voucherType: executionResult.voucherType,
+          costBdt: requiredBdtPrice,
+          remainingBalanceBdt: targetUser ? targetUser.balance : undefined,
           remainingHits: (apiKeyDoc.remainingHits ?? 1) - 1,
           latencyMs,
         },

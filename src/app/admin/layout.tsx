@@ -18,6 +18,7 @@ import {
   Zap,
   Menu,
   X,
+  Coins,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -52,6 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Analytics Overview', href: '/admin', icon: LayoutDashboard },
     { name: 'User Management', href: '/admin/users', icon: Users },
     { name: 'API Key Manager', href: '/admin/api-keys', icon: Key },
+    { name: 'Package Pricing', href: '/admin/packages', icon: Coins },
     { name: 'Provider Gateway', href: '/admin/provider', icon: Server },
     { name: 'Landing Controls', href: '/admin/landing', icon: Globe },
     { name: 'System Settings', href: '/admin/settings', icon: Settings },

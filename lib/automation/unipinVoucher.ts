@@ -75,8 +75,14 @@ export async function processUniPinVoucher({
   let playerName = `Free Fire Player (${uid})`;
 
 
-  // Step 2: Sandbox
-  const isSandboxVoucher = cleanCode.includes('8921-9402') || cleanCode === 'TEST_VOUCHER' || cleanCode.startsWith('DEMO_');
+  // Step 2: Sandbox & Demo Test Detection
+  const isSandboxVoucher =
+    cleanCode.includes('8921-9402') ||
+    cleanCode.includes('89219402') ||
+    cleanCode.includes('TEST_VOUCHER') ||
+    cleanCode.includes('DEMO_') ||
+    fullText.includes('8921-9402') ||
+    fullText.includes('DEMO');
   if (isSandboxVoucher) {
     return {
       success: true,
@@ -234,62 +240,80 @@ export async function processUniPinVoucher({
     await denomNavPromise;
     console.log(`[UniPin Worker] After denom nav. URL: ${uniboxPage.url()}`);
 
-    // ── 7. On channel select page — click Physical Voucher (first item under Physical Vouchers) ──
-    // This page shows "Physical Vouchers" and "Wallet" sections (images blocked, so no text on items)
-    console.log(`[UniPin Worker] Clicking Physical Voucher channel...`);
+    // ── 7. On channel select page — click Physical Voucher (first item under Physical Vouchers / UP Gift Card) ──
+    console.log(`[UniPin Worker] Selecting ${isUPBD ? 'UP Gift Card (UPBD)' : 'UniPin Voucher (BDMB)'} channel (ID: ${targetChannelId})...`);
     const voucherNavPromise = uniboxPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {});
 
-    await uniboxPage.evaluate((channelId) => {
-      // Try ID-based selector first
-      const byId = document.querySelector(`#pc_div_${channelId}, [onclick*="${channelId}"], [data-channel-id="${channelId}"]`);
-      if (byId) {
-        (byId as HTMLElement).click();
-        byId.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-        return 'id';
+    await uniboxPage.evaluate((channelId, isUpbd) => {
+      // 1. Direct channel container match by ID or attribute
+      const specificChannel = document.querySelector(
+        `#pc_div_${channelId}, [onclick*="${channelId}"], [data-channel-id="${channelId}"], [data-payment-channel="${channelId}"]`
+      );
+      if (specificChannel) {
+        (specificChannel as HTMLElement).scrollIntoView({ behavior: 'auto', block: 'center' });
+        (specificChannel as HTMLElement).click();
+        specificChannel.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+        return 'id-target';
       }
 
-      // Try text-based match (bdmb, voucher, physical)
-      const all = Array.from(document.querySelectorAll('div, button, a, li, span'));
-      for (const item of all) {
-        const t = ((item as HTMLElement).innerText || item.textContent || '').toLowerCase();
-        if (t.includes('bdmb') || t.includes('upbd') || t.includes('unipin voucher') || t.includes('unipin physical')) {
-          const clickable = (item.closest('button, a, div[role="button"], li') || item) as HTMLElement;
-          clickable.click();
-          clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-          return 'text';
+      // 2. If UPBD, specifically look for "UP Gift Card", "UniPin Gift Card", "Voucher UP"
+      if (isUpbd) {
+        const giftCardElements = Array.from(document.querySelectorAll('div, button, a, li, span, p'));
+        for (const item of giftCardElements) {
+          const t = ((item as HTMLElement).innerText || item.textContent || '').toLowerCase();
+          if (t.includes('up gift card') || t.includes('unipin gift card') || t.includes('upbd') || (t.includes('gift card') && t.includes('unipin'))) {
+            const clickable = (item.closest('button, a, div[role="button"], li, div[class*="item"], div[class*="channel"]') || item) as HTMLElement;
+            clickable.scrollIntoView({ behavior: 'auto', block: 'center' });
+            clickable.click();
+            clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+            return 'upbd-gift-card';
+          }
         }
       }
 
-      // Fallback: click first item under "Physical Vouchers" section
+      // 3. Match by text keywords (BDMB, UPBD, physical voucher)
+      const all = Array.from(document.querySelectorAll('div, button, a, li, span, p'));
+      for (const item of all) {
+        const t = ((item as HTMLElement).innerText || item.textContent || '').toLowerCase();
+        if (t.includes('bdmb') || t.includes('upbd') || t.includes('unipin voucher') || t.includes('physical voucher') || t.includes('physical')) {
+          const clickable = (item.closest('button, a, div[role="button"], li, div[class*="item"]') || item) as HTMLElement;
+          clickable.scrollIntoView({ behavior: 'auto', block: 'center' });
+          clickable.click();
+          clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+          return 'text-match';
+        }
+      }
+
+      // 4. Fallback: click first element inside Physical Vouchers container
       const physicalHeader = Array.from(document.querySelectorAll('div, span, h2, h3, p')).find(el => {
         const t = ((el as HTMLElement).innerText || el.textContent || '').toLowerCase();
-        return t.includes('physical voucher') || t.includes('physical');
+        return t.includes('physical voucher') || t.includes('physical') || t.includes('gift card');
       });
       if (physicalHeader) {
-        const section = physicalHeader.closest('div') || physicalHeader.parentElement;
+        const section = physicalHeader.closest('div[class*="section"], div[class*="group"]') || physicalHeader.parentElement;
         if (section) {
           const firstClickable = section.querySelector('a, button, div[class*="item"], div[class*="card"], div[class*="option"]') as HTMLElement;
           if (firstClickable) {
             firstClickable.click();
             firstClickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-            return 'physical-section';
+            return 'physical-section-fallback';
           }
         }
       }
 
-      // Last resort: click the very first anchor/button on the page
-      const firstLink = document.querySelector('a[href*="unibox"], a[href*="voucher"]') as HTMLElement;
+      // Last resort: click the first voucher link
+      const firstLink = document.querySelector('a[href*="unibox"], a[href*="voucher"], a[href*="gift"]') as HTMLElement;
       if (firstLink) { firstLink.click(); return 'first-link'; }
 
       return 'none';
-    }, targetChannelId).catch(() => {});
+    }, targetChannelId, isUPBD).catch(() => {});
 
     await voucherNavPromise;
     console.log(`[UniPin Worker] After voucher channel nav. URL: ${uniboxPage.url()}`);
 
     // ── 8. MANDATORY: wait for serial/pin form ──
     console.log(`[UniPin Worker] Waiting for serial/PIN input form...`);
-    const FORM_SELECTOR = 'input[placeholder*="BDMB"], input[placeholder*="Serial"], input[placeholder*="serial"], input[name="serial"], input[id*="serial"]';
+    const FORM_SELECTOR = 'input[placeholder*="BDMB"], input[placeholder*="UPBD"], input[placeholder*="Serial"], input[placeholder*="serial"], input[name*="serial"], input[id*="serial"], input[name="serial_no"]';
 
     let formFound = false;
     try {
@@ -303,7 +327,6 @@ export async function processUniPinVoucher({
         success: false,
         message: 'UniPin voucher form could not load. Possible CAPTCHA or gateway change.',
         errorReason: 'WORKER_ERROR',
-
         voucherType,
         playerName,
       };
@@ -317,7 +340,7 @@ export async function processUniPinVoucher({
       await serialInput.type(effectiveSerial, { delay: 15 });
     }
 
-    // ── 10. Fill PIN ──
+    // ── 10. Fill PIN (Split into 4x4 16 digits) ──
     const cleanPinDigits = effectivePin.replace(/[^0-9]/g, '');
     const pinParts = [
       cleanPinDigits.substring(0, 4),
@@ -326,18 +349,30 @@ export async function processUniPinVoucher({
       cleanPinDigits.substring(12, 16),
     ];
 
-    const pin1 = await uniboxPage.$('input#pin_1, input[name="pin_1"], input#pin1');
-    const pin2 = await uniboxPage.$('input#pin_2, input[name="pin_2"], input#pin2');
-    const pin3 = await uniboxPage.$('input#pin_3, input[name="pin_3"], input#pin3');
-    const pin4 = await uniboxPage.$('input#pin_4, input[name="pin_4"], input#pin4');
+    console.log(`[UniPin Worker] Entering 16-digit PIN across 4 boxes: [${pinParts[0] || '****'}] [${pinParts[1] || '****'}] [${pinParts[2] || '****'}] [${pinParts[3] || '****'}]`);
+
+    // Multiple selector variations for 4 PIN boxes
+    const pinInputs = await uniboxPage.$$('input[name*="pin"], input[id*="pin"], input.pin-input');
+    const pin1 = await uniboxPage.$('input#pin_1, input[name="pin_1"], input#pin1, input[name="pin[]"]:nth-of-type(1)');
+    const pin2 = await uniboxPage.$('input#pin_2, input[name="pin_2"], input#pin2, input[name="pin[]"]:nth-of-type(2)');
+    const pin3 = await uniboxPage.$('input#pin_3, input[name="pin_3"], input#pin3, input[name="pin[]"]:nth-of-type(3)');
+    const pin4 = await uniboxPage.$('input#pin_4, input[name="pin_4"], input#pin4, input[name="pin[]"]:nth-of-type(4)');
     const singlePin = await uniboxPage.$('input#pin, input[name="pin"], input[placeholder*="PIN"], input[placeholder*="pin"]');
 
     if (pin1 && pin2 && pin3 && pin4) {
-      if (pinParts[0]) await pin1.type(pinParts[0], { delay: 15 });
-      if (pinParts[1]) await pin2.type(pinParts[1], { delay: 15 });
-      if (pinParts[2]) await pin3.type(pinParts[2], { delay: 15 });
-      if (pinParts[3]) await pin4.type(pinParts[3], { delay: 15 });
+      if (pinParts[0]) { await pin1.click({ count: 3 }).catch(() => {}); await pin1.type(pinParts[0], { delay: 15 }); }
+      if (pinParts[1]) { await pin2.click({ count: 3 }).catch(() => {}); await pin2.type(pinParts[1], { delay: 15 }); }
+      if (pinParts[2]) { await pin3.click({ count: 3 }).catch(() => {}); await pin3.type(pinParts[2], { delay: 15 }); }
+      if (pinParts[3]) { await pin4.click({ count: 3 }).catch(() => {}); await pin4.type(pinParts[3], { delay: 15 }); }
+    } else if (pinInputs.length >= 4) {
+      for (let i = 0; i < 4; i++) {
+        if (pinParts[i] && pinInputs[i]) {
+          await pinInputs[i].click({ count: 3 }).catch(() => {});
+          await pinInputs[i].type(pinParts[i], { delay: 15 });
+        }
+      }
     } else if (singlePin) {
+      await singlePin.click({ count: 3 }).catch(() => {});
       await singlePin.type(cleanPinDigits, { delay: 15 });
     }
 

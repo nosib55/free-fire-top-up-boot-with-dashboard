@@ -63,7 +63,15 @@ export async function PATCH(request: Request) {
       const limit = parseInt(totalLimit, 10);
       keyDoc.totalLimit = limit;
       keyDoc.totalHits = limit;
-      keyDoc.remainingHits = Math.max(0, limit - (keyDoc.usedCount || keyDoc.usedHits || 0));
+      const newRemaining = Math.max(0, limit - (keyDoc.usedCount || keyDoc.usedHits || 0));
+      keyDoc.remainingHits = newRemaining;
+
+      if (keyDoc.ownerId) {
+        const User = (await import('@/models/User')).default;
+        await User.findByIdAndUpdate(keyDoc.ownerId, { hitBalance: newRemaining });
+        const Reseller = (await import('@/models/Reseller')).default;
+        await Reseller.findOneAndUpdate({ userId: keyDoc.ownerId }, { masterQuotaBalance: newRemaining });
+      }
     } else if (action === 'EXTEND_EXPIRY' && extendDays) {
       const currentExpiry = new Date(keyDoc.expiresAt);
       const now = new Date();

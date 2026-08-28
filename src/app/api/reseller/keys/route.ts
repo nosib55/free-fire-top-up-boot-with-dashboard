@@ -11,7 +11,25 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { resellerUserId, clientName, clientEmail, quotaHits, rateLimitRPS } = body;
 
-    const resellerDoc = await Reseller.findOne({ userId: resellerUserId });
+    let resellerDoc = await Reseller.findOne({ userId: resellerUserId });
+    if (!resellerDoc) {
+      const user = await User.findById(resellerUserId);
+      if (user) {
+        const cleanTag = (user.name || 'RSLR').replace(/[^a-zA-Z0-9]/g, '').substring(0, 5).toUpperCase() || 'RSLR';
+        try {
+          resellerDoc = await Reseller.create({
+            userId: user._id,
+            brandingTag: `${cleanTag}_${Math.random().toString(36).substring(2, 5).toUpperCase()}`,
+            masterQuotaBalance: user.hitBalance && user.hitBalance > 0 ? user.hitBalance : 1000,
+            allocatedQuota: 0,
+            discountRate: 15,
+          });
+        } catch {
+          resellerDoc = await Reseller.findOne({ userId: resellerUserId });
+        }
+      }
+    }
+
     if (!resellerDoc) {
       return NextResponse.json({ success: false, message: 'Reseller account profile not found.' }, { status: 404 });
     }
