@@ -19,7 +19,19 @@ export async function POST(request: Request) {
   await dbConnect();
   try {
     const body = await request.json();
-    const { siteName, description, logoUrl, upstreamServerUrl, upstreamApiKey, telegramAlertChatId } = body;
+    const {
+      siteName,
+      description,
+      logoUrl,
+      upstreamServerUrl,
+      upstreamApiKey,
+      telegramAlertChatId,
+      telegramBotToken,
+      telegramAdminChatId,
+      telegramBotEnabled,
+      telegramAutoAlerts,
+      telegramWelcomeMessage,
+    } = body;
 
     let settings = await SystemSetting.findOne();
     if (!settings) {
@@ -32,6 +44,11 @@ export async function POST(request: Request) {
     if (upstreamServerUrl) settings.upstreamServerUrl = upstreamServerUrl;
     if (upstreamApiKey) settings.upstreamApiKey = upstreamApiKey;
     if (telegramAlertChatId !== undefined) settings.telegramAlertChatId = telegramAlertChatId;
+    if (telegramBotToken !== undefined) settings.telegramBotToken = telegramBotToken.trim();
+    if (telegramAdminChatId !== undefined) settings.telegramAdminChatId = telegramAdminChatId.trim();
+    if (telegramBotEnabled !== undefined) settings.telegramBotEnabled = Boolean(telegramBotEnabled);
+    if (telegramAutoAlerts !== undefined) settings.telegramAutoAlerts = Boolean(telegramAutoAlerts);
+    if (telegramWelcomeMessage !== undefined) settings.telegramWelcomeMessage = telegramWelcomeMessage;
 
     await settings.save();
 

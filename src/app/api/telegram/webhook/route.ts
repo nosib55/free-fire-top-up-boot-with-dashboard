@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { handleTelegramBotCommand } from '@/lib/telegram/bot';
+import { handleTelegramBotCommand, getTelegramCredentials } from '@/lib/telegram/bot';
 import axios from 'axios';
-
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 
 export async function POST(request: Request) {
   try {
@@ -10,13 +8,19 @@ export async function POST(request: Request) {
     const message = body?.message;
 
     if (message && message.text) {
+      const { botToken, botEnabled } = await getTelegramCredentials();
+
+      if (!botEnabled) {
+        return NextResponse.json({ ok: true, message: 'Bot currently disabled in settings.' });
+      }
+
       const replyText = await handleTelegramBotCommand(message.text);
       const chatId = message.chat.id;
 
       // If Bot Token is configured, dispatch directly via Telegram Bot API
-      if (TELEGRAM_BOT_TOKEN) {
+      if (botToken) {
         try {
-          await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             chat_id: chatId,
             text: replyText,
             parse_mode: 'Markdown',

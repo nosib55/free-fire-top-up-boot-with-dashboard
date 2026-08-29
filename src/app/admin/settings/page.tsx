@@ -231,18 +231,29 @@ export default function SystemSettingsPage() {
               )}
             </div>
 
-            {/* Telegram Support Link */}
-            <div>
-              <label className="block text-slate-400 mb-1 font-medium flex items-center gap-1">
-                <Send className="w-3.5 h-3.5 text-slate-500" /> Support Telegram Alert Channel / Link
-              </label>
+            {/* Telegram Support Link & Quick Setup */}
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="text-slate-300 font-bold flex items-center gap-1.5">
+                  <Send className="w-3.5 h-3.5 text-cyan-400" /> Telegram Admin Alert Setup
+                </label>
+                <a
+                  href="/admin/telegram"
+                  className="text-cyan-400 hover:underline font-bold text-xs flex items-center gap-1"
+                >
+                  Open Full Telegram Bot Manager →
+                </a>
+              </div>
               <input
                 type="text"
                 value={telegramAlertChatId}
                 onChange={(e) => setTelegramAlertChatId(e.target.value)}
-                placeholder="@GarenaTopupAlerts"
-                className="w-full p-3 rounded-lg bg-slate-950 border border-slate-800 text-white font-mono"
+                placeholder="@GarenaTopupAlerts or Chat ID"
+                className="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:border-cyan-500 focus:outline-none"
               />
+              <p className="text-[11px] text-slate-500">
+                You can configure your Telegram Bot Token, Webhooks, and interactive commands directly in the <a href="/admin/telegram" className="text-cyan-400 hover:underline font-semibold">Telegram Bot Setup</a> panel.
+              </p>
             </div>
           </div>
         </div>

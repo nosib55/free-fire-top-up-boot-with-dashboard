@@ -19,6 +19,8 @@ import {
   Menu,
   X,
   Coins,
+  Bot,
+  ShieldCheck,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -54,6 +56,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'User Management', href: '/admin/users', icon: Users },
     { name: 'API Key Manager', href: '/admin/api-keys', icon: Key },
     { name: 'Package Pricing', href: '/admin/packages', icon: Coins },
+    { name: 'Garena Shell Accounts', href: '/admin/garena-accounts', icon: ShieldCheck },
+    { name: 'Telegram Bot Setup', href: '/admin/telegram', icon: Bot },
     { name: 'Provider Gateway', href: '/admin/provider', icon: Server },
     { name: 'Landing Controls', href: '/admin/landing', icon: Globe },
     { name: 'System Settings', href: '/admin/settings', icon: Settings },

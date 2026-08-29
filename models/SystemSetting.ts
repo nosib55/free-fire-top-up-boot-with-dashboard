@@ -33,6 +33,17 @@ export interface ISystemSetting extends Document {
   proPrice?: number;
   enterprisePrice?: number;
 
+  // Telegram Bot Setup & Notification Controls
+  telegramBotToken?: string;
+  telegramAdminChatId?: string;
+  telegramBotUsername?: string;
+  telegramBotEnabled?: boolean;
+  telegramAutoAlerts?: boolean;
+  telegramWelcomeMessage?: string;
+
+  // Active Garena Account
+  activeGarenaAccountId?: string;
+
   // Live Worker Balance Sync Fields
   unipinWalletBalance?: number;
   garenaShellsBalance?: number;
@@ -93,6 +104,20 @@ const SystemSettingSchema = new Schema<ISystemSetting>(
     starterPrice: { type: Number, default: 500 },
     proPrice: { type: Number, default: 2000 },
     enterprisePrice: { type: Number, default: 5000 },
+
+    // Telegram Bot Setup & Automated Notifications
+    telegramBotToken: { type: String, default: '' },
+    telegramAdminChatId: { type: String, default: '' },
+    telegramBotUsername: { type: String, default: '' },
+    telegramBotEnabled: { type: Boolean, default: true },
+    telegramAutoAlerts: { type: Boolean, default: true },
+    telegramWelcomeMessage: {
+      type: String,
+      default: '🤖 Welcome to Apex Top-Up Automated Bot! Use /help to see available administrative commands.',
+    },
+
+    // Active Garena Worker Account
+    activeGarenaAccountId: { type: String, default: '' },
 
     // Balance Fields
     unipinWalletBalance: { type: Number, default: 0 },
