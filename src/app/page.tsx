@@ -248,19 +248,19 @@ export default function LandingPage() {
         </nav>
 
         {/* Hero Section (Controlled by Admin) */}
-        <section className="relative overflow-hidden pt-16 sm:pt-20 pb-12 sm:pb-16 px-4">
+        <section className="relative overflow-hidden pt-12 sm:pt-20 pb-12 sm:pb-16 px-4">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-cyan-900/20 via-slate-950 to-slate-950 -z-10" />
-          <div className="max-w-5xl mx-auto text-center space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-semibold text-cyan-400 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              Garena & UniPin Automation Gateway v2.4 Online
+          <div className="max-w-5xl mx-auto text-center space-y-5 sm:space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] sm:text-xs font-semibold text-cyan-400 shadow-sm max-w-full truncate">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+              <span className="truncate">Garena & UniPin Automation Gateway v2.4 Online</span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight leading-tight">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight break-words">
               {settings.heroHeadline}
             </h1>
 
-            <p className="text-slate-400 text-base sm:text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
+            <p className="text-slate-400 text-sm sm:text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
               {settings.heroSubtitle}
             </p>
 
@@ -316,32 +316,31 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Pricing Packages (Controlled by Admin) */}
+        {/* API Features & Quota Tiers */}
         <section className="max-w-7xl mx-auto px-4 py-12 sm:py-16 border-t border-slate-800">
           <div className="text-center space-y-3 mb-10">
-            <h2 className="text-2xl sm:text-4xl font-black text-white">B2B API Quota Packages</h2>
-            <p className="text-xs sm:text-sm text-slate-400">Choose the quota volume that fits your top-up scale.</p>
+            <h2 className="text-2xl sm:text-4xl font-black text-white">B2B API Integration Tiers</h2>
+            <p className="text-xs sm:text-sm text-slate-400">Robust automation capabilities tailored for bots, panels, and developer integrations.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             {/* Starter Tier */}
             <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-              <h3 className="text-lg font-bold text-white">Starter Package</h3>
-              <div className="text-3xl font-black text-cyan-400 font-mono">
-                ৳{settings.starterPrice?.toLocaleString()}
-                <span className="text-xs text-slate-400 font-normal"> / 500 Hits</span>
+              <h3 className="text-lg font-bold text-white">Developer Tier</h3>
+              <div className="text-2xl font-black text-cyan-400 font-mono">
+                Standard Quota
               </div>
               <ul className="text-xs text-slate-300 space-y-2 font-medium">
-                <li>• 500 Automated Top-Up Requests</li>
+                <li>• Automated Top-Up Requests</li>
                 <li>• Free Unlimited UID Lookups</li>
                 <li>• UniPin BDMB & UPBD Support</li>
-                <li>• 30 Days API Key Expiration</li>
+                <li>• Instant API Key Generation</li>
               </ul>
               <Link
                 href="/login"
                 className="block w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-center text-xs font-bold text-cyan-400"
               >
-                Get Started
+                Access Portal
               </Link>
             </div>
 
@@ -350,43 +349,41 @@ export default function LandingPage() {
               <span className="absolute -top-3 right-4 px-2.5 py-0.5 rounded-full bg-cyan-600 text-white text-[10px] font-extrabold uppercase tracking-wider">
                 Popular
               </span>
-              <h3 className="text-lg font-bold text-white">Pro Reseller</h3>
-              <div className="text-3xl font-black text-white font-mono">
-                ৳{settings.proPrice?.toLocaleString()}
-                <span className="text-xs text-slate-400 font-normal"> / 2,500 Hits</span>
+              <h3 className="text-lg font-bold text-white">B2B Reseller</h3>
+              <div className="text-2xl font-black text-white font-mono">
+                High Volume
               </div>
               <ul className="text-xs text-slate-300 space-y-2 font-medium">
-                <li>• 2,500 Automated Top-Up Requests</li>
-                <li>• Free Unlimited UID Lookups</li>
+                <li>• Multi-Tenant Sub-Key Management</li>
+                <li>• Isolated Client Order Analytics</li>
                 <li>• Webhook Callbacks & Telemetry</li>
-                <li>• 60 Days API Key Expiration</li>
+                <li>• Garena Shells Automation Pool</li>
               </ul>
               <Link
                 href="/login"
                 className="block w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-center text-xs font-bold text-white shadow-md shadow-cyan-600/30"
               >
-                Choose Pro Plan
+                Reseller Portal
               </Link>
             </div>
 
             {/* Enterprise Tier */}
             <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-              <h3 className="text-lg font-bold text-white">Enterprise Tier</h3>
-              <div className="text-3xl font-black text-purple-400 font-mono">
-                ৳{settings.enterprisePrice?.toLocaleString()}
-                <span className="text-xs text-slate-400 font-normal"> / 10,000 Hits</span>
+              <h3 className="text-lg font-bold text-white">Enterprise Automation</h3>
+              <div className="text-2xl font-black text-purple-400 font-mono">
+                Unlimited Scale
               </div>
               <ul className="text-xs text-slate-300 space-y-2 font-medium">
-                <li>• 10,000 Automated Top-Up Requests</li>
-                <li>• Dedicated Worker Queue Isolation</li>
-                <li>• Priority Upstream Route</li>
-                <li>• 90 Days API Key Expiration</li>
+                <li>• High-Concurrency Worker Routing</li>
+                <li>• Dedicated Telegram Bot Gateway</li>
+                <li>• Priority Upstream Execution</li>
+                <li>• 24/7 Anti-Block Proxy Engine</li>
               </ul>
               <Link
                 href="/login"
                 className="block w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-center text-xs font-bold text-purple-400"
               >
-                Contact Enterprise
+                Connect Enterprise
               </Link>
             </div>
           </div>

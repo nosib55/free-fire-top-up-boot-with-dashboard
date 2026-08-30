@@ -46,7 +46,8 @@ export interface TopUpJobData {
   serial?: string;
   pin?: string;
   diamondPackageId?: string;
-  itemType?: 'LEVEL_UP_PASS' | 'WEEKLY_LITE' | 'MONTHLY_MEMBERSHIP' | 'SPECIAL_DEAL';
+  itemType?: any;
+  playerLevel?: number;
   apiKey: string;
 }
 
@@ -122,7 +123,7 @@ if (redisClient) {
           if (pipeline === 'UNIPIN_WALLET') {
             result = await processUniPinWallet({ uid, diamondPackageId: diamondPackageId || '100_DIAMONDS' });
           } else if (pipeline === 'GARENA_SHELLS') {
-            result = await processGarenaShells({ uid, itemType: itemType || 'LEVEL_UP_PASS' });
+            result = await processGarenaShells({ uid, itemType: itemType || 'WEEKLY_MEMBERSHIP', playerLevel: job.data.playerLevel });
           } else {
             result = await processUniPinVoucher({ uid, voucherCode: voucherCode || '', serial, pin });
           }
@@ -138,7 +139,7 @@ if (redisClient) {
       }
     );
   } catch (err: any) {
-    console.warn('[BullMQ Worker] Could not start BullMQ worker:', err.message);
+    console.warn('[Queue Worker] Failed to init Redis Queue:', err?.message);
   }
 }
 
@@ -169,7 +170,9 @@ export function getQueueControlStatus() {
   };
 }
 
-// Direct Execution Fallback (when Redis is offline or instant sync execution requested)
+/**
+ * Fallback direct execution when Redis is not available
+ */
 export async function executeTopupDirect(data: TopUpJobData): Promise<AutomationResult> {
   if (isQueuePaused) {
     return {
@@ -192,7 +195,7 @@ export async function executeTopupDirect(data: TopUpJobData): Promise<Automation
     if (data.pipeline === 'UNIPIN_WALLET') {
       return await processUniPinWallet({ uid: data.uid, diamondPackageId: data.diamondPackageId || '100_DIAMONDS' });
     } else if (data.pipeline === 'GARENA_SHELLS') {
-      return await processGarenaShells({ uid: data.uid, itemType: data.itemType || 'LEVEL_UP_PASS' });
+      return await processGarenaShells({ uid: data.uid, itemType: data.itemType || 'WEEKLY_MEMBERSHIP', playerLevel: data.playerLevel });
     } else {
       return await processUniPinVoucher({
         uid: data.uid,

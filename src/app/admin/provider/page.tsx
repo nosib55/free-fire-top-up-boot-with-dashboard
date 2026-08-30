@@ -88,43 +88,43 @@ export default function ProviderGatewayPage() {
   );
 
   return (
-    <div className="space-y-8" suppressHydrationWarning>
+    <div className="space-y-6 sm:space-y-8" suppressHydrationWarning>
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Upstream Provider Gateway</h1>
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Upstream Provider Gateway</h1>
           <p className="text-xs text-slate-400 mt-1">
             Monitor master provider server health, API key balance, latency metrics, and connection status.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={fetchProviderStatus}
-            className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300"
+            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300 text-center"
           >
             {loading ? 'Refreshing...' : 'Refresh Gateway'}
           </button>
           <button
             onClick={handleTestConnection}
             disabled={testing}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 font-bold text-xs text-white shadow-lg shadow-cyan-500/20"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 font-bold text-xs text-white shadow-lg shadow-cyan-500/20"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${testing ? 'animate-spin' : ''}`} />
-            <span>{testing ? 'Testing Endpoint...' : 'Test Connection'}</span>
+            <span>{testing ? 'Testing...' : 'Test Connection'}</span>
           </button>
         </div>
       </div>
 
       {/* Upstream Health Status Card */}
-      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
               <Server className="w-6 h-6 text-cyan-400" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-extrabold text-base text-white">Upstream Master Server</span>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1 ${
@@ -137,13 +137,13 @@ export default function ProviderGatewayPage() {
                   {providerData.connectionStatus}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">
+              <p className="text-xs text-slate-400 font-mono mt-0.5 break-all">
                 {providerData.upstreamServerUrl}
               </p>
             </div>
           </div>
 
-          <div className="text-right space-y-1">
+          <div className="text-left sm:text-right space-y-1">
             <span className="text-xs text-slate-500">Gateway Latency</span>
             <p className="text-xl font-mono font-bold text-emerald-400">
               {providerData.latencyMs} ms
@@ -152,9 +152,9 @@ export default function ProviderGatewayPage() {
         </div>
 
         {/* Master Provider Quota Statistics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-slate-800">
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <span className="text-[11px] text-slate-400 font-medium">Master Provider API Key</span>
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-4 border-t border-slate-800">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1 col-span-2 sm:col-span-1">
+            <span className="text-[11px] text-slate-400 font-medium">Master Provider Key</span>
             <p className="font-mono font-bold text-xs text-cyan-400 truncate">
               {providerData.providerApiKey}
             </p>

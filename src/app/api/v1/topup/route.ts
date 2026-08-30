@@ -39,6 +39,7 @@ export async function POST(request: Request) {
 
     const targetPipeline = pipeline || 'UNIPIN_VOUCHER';
     const effectiveCode = voucherCode || `${serial || ''}${pin || ''}`;
+    const effectiveItemType = (itemType || diamondPackageId || '').toUpperCase();
 
     if (targetPipeline === 'UNIPIN_VOUCHER' && !effectiveCode) {
       return NextResponse.json(
@@ -47,33 +48,33 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1.5 Package Rate & BDT Wallet Balance Check for Shell/Wallet pipelines
-    let requiredBdtPrice = 0;
-    let targetUser: any = null;
+    // 1.5 Validate Garena Shells packages & Level Up requirements
+    if (targetPipeline === 'GARENA_SHELLS') {
+      const { ALLOWED_GARENA_SHELL_PACKAGES, LEVEL_UP_REQUIRED_LEVELS } = await import('@/lib/automation/garenaShells');
+      if (!ALLOWED_GARENA_SHELL_PACKAGES.includes(effectiveItemType)) {
+        return NextResponse.json(
+          {
+            success: false,
+            errorReason: 'UNSUPPORTED_PACKAGE',
+            message: `Only Special Deals (WEEKLY_MEMBERSHIP, MONTHLY_MEMBERSHIP, WEEKLY_LITE, LEVEL_UP_6, LEVEL_UP_10, LEVEL_UP_15, LEVEL_UP_20, LEVEL_UP_25, LEVEL_UP_30) are available via Garena Shells. '${effectiveItemType}' is not supported.`,
+            quotaDeducted: false,
+          },
+          { status: 400 }
+        );
+      }
 
-    if (targetPipeline === 'GARENA_SHELLS' || targetPipeline === 'UNIPIN_WALLET') {
-      const SystemSetting = (await import('@/models/SystemSetting')).default;
-      const User = (await import('@/models/User')).default;
-      const settings = await SystemSetting.findOne();
-      const packageKey = itemType || diamondPackageId || '100_DIAMONDS';
-
-      const matchedRate = settings?.packageRates?.find(
-        (p: any) => p.packageId === packageKey || p.packageId.includes(packageKey)
-      );
-
-      requiredBdtPrice = matchedRate?.priceBdt || (packageKey.includes('25') ? 20 : packageKey.includes('50') ? 40 : 80);
-
-      if (apiKeyDoc.ownerId) {
-        targetUser = await User.findById(apiKeyDoc.ownerId);
-        if (targetUser && (targetUser.balance || 0) < requiredBdtPrice) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: `Insufficient BDT wallet balance. Required: ৳${requiredBdtPrice}, Available: ৳${targetUser.balance || 0}. Please recharge your account.`,
-            },
-            { status: 400 }
-          );
-        }
+      const reqLevel = LEVEL_UP_REQUIRED_LEVELS[effectiveItemType];
+      const currentLevel = Number(body.playerLevel ?? body.level);
+      if (reqLevel && currentLevel && currentLevel < reqLevel) {
+        return NextResponse.json(
+          {
+            success: false,
+            errorReason: 'INSUFFICIENT_LEVEL',
+            message: `Player level (${currentLevel}) is less than the required Level Up Package level (${reqLevel}). Cannot purchase.`,
+            quotaDeducted: false,
+          },
+          { status: 400 }
+        );
       }
     }
 
@@ -85,35 +86,19 @@ export async function POST(request: Request) {
       voucherCode: effectiveCode,
       serial,
       pin,
-      diamondPackageId,
-      itemType,
+      diamondPackageId: effectiveItemType,
+      itemType: effectiveItemType as any,
+      playerLevel: body.playerLevel ? Number(body.playerLevel) : body.level ? Number(body.level) : undefined,
       apiKey: apiKeyDoc.key,
     });
 
     const latencyMs = Date.now() - startTime;
     await dbConnect();
 
-    // 3. Handle Quota & BDT Balance Deduction based on outcome
+    // 3. Handle Quota Deduction based on outcome
     if (executionResult.success) {
       // Deduct 1 API hit
       await deductQuotaOnSuccess(apiKeyDoc._id.toString());
-
-      // Deduct BDT price from user wallet if Shell/Wallet pipeline
-      if (requiredBdtPrice > 0 && targetUser) {
-        targetUser.balance = Math.max(0, (targetUser.balance || 0) - requiredBdtPrice);
-        await targetUser.save();
-
-        const Transaction = (await import('@/models/Transaction')).default;
-        await Transaction.create({
-          txId: `TOPUP_${Date.now()}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
-          userId: targetUser._id,
-          type: 'TOPUP_DEDUCTION',
-          amount: requiredBdtPrice,
-          hits: 1,
-          status: 'COMPLETED',
-          proof: `Deducted ৳${requiredBdtPrice} for ${itemType || diamondPackageId || 'Top-Up'} (Player UID: ${uid})`,
-        });
-      }
 
       await ApiLog.create({
         apiKey: apiKeyDoc.key,
@@ -121,7 +106,7 @@ export async function POST(request: Request) {
         endpoint: '/api/v1/topup',
         uid,
         voucherCode: effectiveCode ? `${effectiveCode.substring(0, 4)}****` : undefined,
-        requestData: { pipeline: targetPipeline, uid, diamondPackageId, itemType, costBdt: requiredBdtPrice },
+        requestData: { pipeline: targetPipeline, uid, diamondPackageId: effectiveItemType, itemType: effectiveItemType },
         responseData: executionResult,
         status: 'SUCCESS',
         latencyMs,
@@ -131,17 +116,41 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         success: true,
-        message: executionResult.message,
+        message: executionResult.message || 'Free Fire top-up executed successfully.',
         data: {
+          uid,
+          pipeline: targetPipeline,
+          transactionId: executionResult.orderId || `TX_${Date.now()}`,
           playerName: executionResult.playerName,
-          orderId: executionResult.orderId,
-          voucherType: executionResult.voucherType,
-          costBdt: requiredBdtPrice,
-          remainingBalanceBdt: targetUser ? targetUser.balance : undefined,
-          remainingHits: (apiKeyDoc.remainingHits ?? 1) - 1,
+          remainingHits: Math.max(0, (apiKeyDoc.remainingHits ?? 1) - 1),
           latencyMs,
         },
       });
+    }
+
+    // 4. Failure handling (Insufficient Level vs Invalid UID vs Invalid Voucher vs Worker Error)
+    if (executionResult.errorReason === 'INSUFFICIENT_LEVEL' || executionResult.errorReason === 'UNSUPPORTED_PACKAGE') {
+      await ApiLog.create({
+        apiKey: apiKeyDoc.key,
+        userId: apiKeyDoc.ownerId,
+        endpoint: '/api/v1/topup',
+        uid,
+        status: `FAILED_${executionResult.errorReason}`,
+        latencyMs,
+        quotaDeducted: false,
+        ipAddress: clientIp,
+        errorDetails: executionResult.message,
+      });
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: executionResult.message,
+          errorReason: executionResult.errorReason,
+          quotaDeducted: false,
+        },
+        { status: 400 }
+      );
     }
 
     // 4. Failure handling (Invalid UID vs Invalid Voucher vs Worker Error)

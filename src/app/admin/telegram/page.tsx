@@ -216,16 +216,16 @@ export default function TelegramBotSetupPage() {
   const isConnected = Boolean(botInfo?.ok || botUsername);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8" suppressHydrationWarning>
+    <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8" suppressHydrationWarning>
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase tracking-widest font-mono">
               TELEGRAM INTEGRATION
             </span>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight mt-1">
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1">
             Telegram Bot Setup & Notification Control
           </h1>
           <p className="text-xs text-slate-400 mt-1">
@@ -233,11 +233,11 @@ export default function TelegramBotSetupPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={fetchTelegramSettings}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300 transition-colors"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300 transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -245,10 +245,10 @@ export default function TelegramBotSetupPage() {
           <button
             onClick={handleTestConnection}
             disabled={testing || !botToken}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 font-bold text-xs text-white shadow-lg shadow-cyan-500/20 hover:brightness-110 transition-all disabled:opacity-50"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 font-bold text-xs text-white shadow-lg shadow-cyan-500/20 hover:brightness-110 transition-all disabled:opacity-50"
           >
             <Zap className={`w-3.5 h-3.5 ${testing ? 'animate-spin' : ''}`} />
-            <span>{testing ? 'Verifying...' : 'Test Connection & Ping'}</span>
+            <span>{testing ? 'Verifying...' : 'Test Connection'}</span>
           </button>
         </div>
       </div>

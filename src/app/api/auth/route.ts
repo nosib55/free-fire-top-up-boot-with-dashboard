@@ -8,11 +8,88 @@ export async function POST(request: Request) {
   await dbConnect();
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { email, password, apiKey } = body;
 
+    // ==========================================
+    // 1. Direct API Key / Token Authentication
+    // ==========================================
+    if (apiKey) {
+      const cleanKey = apiKey.trim();
+      const apiKeyDoc = await ApiKey.findOne({ key: cleanKey });
+
+      if (!apiKeyDoc) {
+        return NextResponse.json(
+          { success: false, message: 'Invalid API Key. Please verify your token.' },
+          { status: 401 }
+        );
+      }
+
+      if (!apiKeyDoc.isActive || apiKeyDoc.status === 'suspended') {
+        return NextResponse.json(
+          { success: false, message: 'This API Key is suspended or revoked. Contact administration.' },
+          { status: 403 }
+        );
+      }
+
+      // Check Expiration
+      if (apiKeyDoc.expiresAt && new Date() > new Date(apiKeyDoc.expiresAt)) {
+        return NextResponse.json(
+          { success: false, message: 'This API Key has expired. Please contact administration for renewal.' },
+          { status: 403 }
+        );
+      }
+
+      // Find user owner or fallback create
+      let user = null;
+      if (apiKeyDoc.ownerId) {
+        user = await User.findById(apiKeyDoc.ownerId);
+      }
+      if (!user && apiKeyDoc.userRef) {
+        user = await User.findById(apiKeyDoc.userRef);
+      }
+
+      if (!user) {
+        // Create user matching this key
+        user = await User.create({
+          name: apiKeyDoc.name || 'API Client',
+          email: `${cleanKey.toLowerCase().substring(0, 10)}@client-api.local`,
+          role: apiKeyDoc.role === 'admin' ? 'admin' : 'user',
+          status: 'active',
+        });
+        apiKeyDoc.ownerId = user._id;
+        await apiKeyDoc.save();
+      }
+
+      if (user.status === 'suspended') {
+        return NextResponse.json(
+          { success: false, message: 'Your associated account is suspended. Contact administration.' },
+          { status: 403 }
+        );
+      }
+
+      const response = NextResponse.json({
+        success: true,
+        message: 'Authenticated via API Key successfully.',
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          apiKey: apiKeyDoc.key,
+        },
+      });
+
+      response.cookies.set('admin_session', user._id.toString(), { path: '/' });
+      response.cookies.set('user_role', user.role || 'user', { path: '/' });
+      return response;
+    }
+
+    // ==========================================
+    // 2. Email & Password Authentication
+    // ==========================================
     if (!email || !password) {
       return NextResponse.json(
-        { success: false, message: 'Email and password are required.' },
+        { success: false, message: 'Email and password (or API Key) are required.' },
         { status: 400 }
       );
     }
@@ -54,6 +131,14 @@ export async function POST(request: Request) {
             { status: 401 }
           );
         }
+      }
+    }
+
+    // Master admin account auto-activation guard
+    if (user.role === 'admin' || cleanEmail === 'admin@apex-topup.com') {
+      if (user.status !== 'active') {
+        user.status = 'active';
+        await user.save();
       }
     }
 

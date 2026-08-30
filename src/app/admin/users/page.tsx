@@ -168,9 +168,9 @@ export default function UserManagementPage() {
   return (
     <div className="space-y-6" suppressHydrationWarning>
       {/* Page Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">User Management (3-Tier Roles)</h1>
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">User Management (3-Tier Roles)</h1>
           <p className="text-xs text-slate-400 mt-1">
             Manage root administrators, B2B resellers, client users, role assignments, and account status.
           </p>
@@ -178,7 +178,7 @@ export default function UserManagementPage() {
 
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold text-xs text-white shadow-md shadow-cyan-600/30 transition-all hover:scale-105"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold text-xs text-white shadow-md shadow-cyan-600/30 transition-all hover:scale-105 w-full sm:w-auto"
         >
           <UserPlus className="w-4 h-4" />
           <span>Create New User</span>
@@ -186,28 +186,27 @@ export default function UserManagementPage() {
       </div>
 
       {/* Search Bar */}
-      <div className="relative max-w-md">
-        <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+      <div className="relative w-full sm:max-w-md">
+        <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search users by name or email..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
         />
       </div>
 
       {/* User Table */}
-      <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-lg">
+        <div className="overflow-x-auto touch-pan-x">
+          <table className="w-full text-left text-xs text-slate-300 min-w-[700px]">
             <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
               <tr>
                 <th className="p-4">User Details</th>
                 <th className="p-4">Phone</th>
                 <th className="p-4">Role</th>
                 <th className="p-4">Account Status</th>
-                <th className="p-4">Wallet Balance</th>
                 <th className="p-4">Hit Balance</th>
                 <th className="p-4">Created Date</th>
                 <th className="p-4 text-right">Actions</th>
@@ -216,7 +215,7 @@ export default function UserManagementPage() {
             <tbody className="divide-y divide-slate-800">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-500">
+                  <td colSpan={7} className="p-8 text-center text-slate-500">
                     {loading ? 'Loading users...' : 'No users found.'}
                   </td>
                 </tr>
@@ -275,10 +274,6 @@ export default function UserManagementPage() {
                       </span>
                     </td>
 
-                    <td className="p-4 font-mono text-emerald-400 font-bold">
-                      ৳{Number(u.balance ?? 0).toLocaleString()}
-                    </td>
-
                     <td className="p-4 font-mono text-cyan-300 font-bold">
                       {u.hitBalance ?? 1000} Hits
                     </td>
@@ -316,11 +311,11 @@ export default function UserManagementPage() {
 
       {/* CREATE USER MODAL */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="max-w-md w-full bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+          <div className="max-w-md w-full bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h3 className="font-extrabold text-base text-white">Create New User</h3>
-              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-white p-1">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -400,11 +395,11 @@ export default function UserManagementPage() {
 
       {/* EDIT USER MODAL */}
       {editUserId && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="max-w-md w-full bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+          <div className="max-w-md w-full bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h3 className="font-extrabold text-base text-white">Edit User</h3>
-              <button onClick={() => setEditUserId(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setEditUserId(null)} className="text-slate-400 hover:text-white p-1">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -444,28 +439,15 @@ export default function UserManagementPage() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-400 mb-1 font-medium">Wallet Balance (BDT ৳)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={editBalance}
-                    onChange={(e) => setEditBalance(e.target.value)}
-                    className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-emerald-400 font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1 font-medium">API Hit Quota</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editHitBalance}
-                    onChange={(e) => setEditHitBalance(e.target.value)}
-                    className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-cyan-300 font-mono font-bold"
-                  />
-                </div>
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">API Hit Quota Balance</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editHitBalance}
+                  onChange={(e) => setEditHitBalance(e.target.value)}
+                  className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-cyan-300 font-mono font-bold"
+                />
               </div>
 
               <div>

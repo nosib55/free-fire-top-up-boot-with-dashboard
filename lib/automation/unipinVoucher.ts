@@ -17,7 +17,7 @@ export interface AutomationResult {
   voucherType?: string;
   playerName?: string;
   orderId?: string;
-  errorReason?: 'INVALID_UID' | 'INVALID_VOUCHER' | 'WORKER_ERROR';
+  errorReason?: 'INVALID_UID' | 'INVALID_VOUCHER' | 'WORKER_ERROR' | 'INSUFFICIENT_LEVEL' | 'UNSUPPORTED_PACKAGE';
 }
 
 async function saveDebugScreenshot(page: Page, label: string) {

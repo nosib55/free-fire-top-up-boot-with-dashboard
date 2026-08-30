@@ -86,9 +86,9 @@ export default function LandingControlPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-8" suppressHydrationWarning>
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Landing Page Control System</h1>
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Landing Page Control System</h1>
           <p className="text-xs text-slate-400 mt-1">
             Customize announcements, hero headlines, maintenance modes, support channels, and pricing displayed on the public landing page.
           </p>
@@ -98,7 +98,7 @@ export default function LandingControlPage() {
           href="/"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-cyan-400 hover:text-cyan-300 font-semibold hover:border-slate-700 transition-colors shadow-sm"
+          className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-cyan-400 hover:text-cyan-300 font-semibold hover:border-slate-700 transition-colors shadow-sm w-full sm:w-auto"
         >
           <span>View Live Landing Page</span>
           <ExternalLink className="w-3.5 h-3.5" />
@@ -120,7 +120,7 @@ export default function LandingControlPage() {
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Section 1: Live Announcement & Notice Bar */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
               <Megaphone className="w-4 h-4 text-cyan-400" />
@@ -153,7 +153,7 @@ export default function LandingControlPage() {
         </div>
 
         {/* Section 2: Hero Headlines & Description */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
           <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-400" />
             Hero Section Text & Branding
@@ -183,7 +183,7 @@ export default function LandingControlPage() {
         </div>
 
         {/* Section 3: Emergency Maintenance Mode Switch */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-rose-400 uppercase tracking-wider flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-rose-400" />
@@ -217,7 +217,7 @@ export default function LandingControlPage() {
         </div>
 
         {/* Section 4: Reseller Support Channels */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+        <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
           <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
             <MessageCircle className="w-4 h-4 text-blue-400" />
             Support Channels & Contact Info
@@ -237,61 +237,12 @@ export default function LandingControlPage() {
           </div>
         </div>
 
-        {/* Section 5: B2B Pricing Packages Control */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-          <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-            <Tag className="w-4 h-4 text-emerald-400" />
-            Landing Page Pricing Tiers (BDT ৳)
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-              <span className="text-slate-400 font-semibold block">Starter Tier (500 Hits)</span>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-cyan-400 font-bold text-sm">৳</span>
-                <input
-                  type="number"
-                  value={form.starterPrice}
-                  onChange={(e) => setForm({ ...form, starterPrice: Number(e.target.value) })}
-                  className="w-full p-2 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono font-bold"
-                />
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-              <span className="text-slate-400 font-semibold block">Pro Reseller (2,500 Hits)</span>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-emerald-400 font-bold text-sm">৳</span>
-                <input
-                  type="number"
-                  value={form.proPrice}
-                  onChange={(e) => setForm({ ...form, proPrice: Number(e.target.value) })}
-                  className="w-full p-2 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono font-bold"
-                />
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-              <span className="text-slate-400 font-semibold block">Enterprise (10,000 Hits)</span>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-purple-400 font-bold text-sm">৳</span>
-                <input
-                  type="number"
-                  value={form.enterprisePrice}
-                  onChange={(e) => setForm({ ...form, enterprisePrice: Number(e.target.value) })}
-                  className="w-full p-2 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono font-bold"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Submit Save Button */}
         <div className="flex justify-end pt-2">
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold text-white shadow-lg shadow-cyan-600/30 transition-all hover:scale-[1.02] text-xs"
+            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold text-white shadow-lg shadow-cyan-600/30 transition-all hover:scale-[1.02] text-xs w-full sm:w-auto"
           >
             <Save className="w-4 h-4" />
             <span>{saving ? 'Saving Changes...' : 'Save Landing Page Settings'}</span>

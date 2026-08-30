@@ -62,17 +62,17 @@ processTopupOrder();`;
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8" suppressHydrationWarning>
+    <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8" suppressHydrationWarning>
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-white tracking-tight">Downstream Client Integration Guide</h1>
+        <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Downstream Client Integration Guide</h1>
         <p className="text-xs text-slate-400 mt-1">
           Shareable API endpoint documentation, request header specs, and payload builder for downstream buyers and resellers.
         </p>
       </div>
 
       {/* URL Builder Interactive Tool */}
-      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+      <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-lg">
         <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
           <Globe className="w-4 h-4" />
           Interactive API Endpoint URL Builder
@@ -107,8 +107,8 @@ processTopupOrder();`;
       </div>
 
       {/* Payload Specs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
           <h3 className="font-bold text-xs text-slate-200 uppercase tracking-wider flex items-center gap-2">
             <Code2 className="w-4 h-4 text-cyan-400" />
             Request Header Specifications
@@ -127,15 +127,14 @@ processTopupOrder();`;
           </table>
         </div>
 
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
           <h3 className="font-bold text-xs text-slate-200 uppercase tracking-wider flex items-center gap-2">
             <Layers className="w-4 h-4 text-emerald-400" />
             Supported Top-Up Pipelines
           </h3>
           <ul className="text-xs text-slate-300 space-y-1 font-mono">
-            <li>• <code className="text-cyan-300">UNIPIN_VOUCHER</code> (Voucher code/PIN)</li>
-            <li>• <code className="text-cyan-300">UNIPIN_WALLET</code> (Direct Wallet Balance)</li>
-            <li>• <code className="text-cyan-300">GARENA_SHELLS</code> (Level-Up Pass / Deals)</li>
+            <li>• <code className="text-cyan-300">UNIPIN_VOUCHER</code> (UniPin BDMB & UPBD Voucher / PIN)</li>
+            <li>• <code className="text-cyan-300">GARENA_SHELLS</code> (Garena Shells Deals & Level-Up Passes)</li>
           </ul>
         </div>
       </div>
@@ -159,7 +158,7 @@ processTopupOrder();`;
               {copiedSnippet === 'node' ? 'Copied' : 'Copy'}
             </button>
           </div>
-          <pre className="p-4 text-xs font-mono text-slate-200 overflow-x-auto">
+          <pre className="p-4 text-xs font-mono text-slate-200 overflow-x-auto touch-pan-x">
             {nodeSnippet}
           </pre>
         </div>
@@ -176,7 +175,7 @@ processTopupOrder();`;
               {copiedSnippet === 'curl' ? 'Copied' : 'Copy'}
             </button>
           </div>
-          <pre className="p-4 text-xs font-mono text-slate-200 overflow-x-auto">
+          <pre className="p-4 text-xs font-mono text-slate-200 overflow-x-auto touch-pan-x">
             {curlSnippet}
           </pre>
         </div>

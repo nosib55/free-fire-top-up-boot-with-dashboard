@@ -55,8 +55,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Analytics Overview', href: '/admin', icon: LayoutDashboard },
     { name: 'User Management', href: '/admin/users', icon: Users },
     { name: 'API Key Manager', href: '/admin/api-keys', icon: Key },
-    { name: 'Package Pricing', href: '/admin/packages', icon: Coins },
-    { name: 'Garena Shell Accounts', href: '/admin/garena-accounts', icon: ShieldCheck },
     { name: 'Telegram Bot Setup', href: '/admin/telegram', icon: Bot },
     { name: 'Provider Gateway', href: '/admin/provider', icon: Server },
     { name: 'Landing Controls', href: '/admin/landing', icon: Globe },
@@ -76,7 +74,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Mobile Slide-Over Sidebar Drawer */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 w-72 bg-slate-900 border-r border-slate-800 z-50 flex flex-col justify-between p-4 transition-transform duration-300 ease-in-out lg:hidden ${
+        className={`fixed top-0 bottom-0 left-0 w-72 max-w-[85vw] bg-slate-900 border-r border-slate-800 z-50 flex flex-col justify-between p-4 transition-transform duration-300 ease-in-out lg:hidden overflow-y-auto ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -257,21 +255,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span className="hidden md:inline">Gateway Connected</span>
               <span className="md:hidden">Connected</span>
             </div>
-            <Link
-              href="/admin/landing"
-              className={`hover:text-cyan-400 hidden sm:inline transition-colors ${
-                pathname === '/admin/landing' ? 'text-cyan-400 font-bold' : 'text-slate-300'
-              }`}
-            >
-              Landing Controls
-            </Link>
-            <Link href="/userDashboard" className="hover:text-cyan-400 text-slate-300 hidden sm:inline transition-colors">
-              User Portal
-            </Link>
           </div>
         </header>
 
-        <main className="p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto w-full max-w-full" suppressHydrationWarning>
+        <main className="p-3.5 sm:p-6 lg:p-8 flex-1 overflow-y-auto w-full max-w-full" suppressHydrationWarning>
           {children}
         </main>
       </div>

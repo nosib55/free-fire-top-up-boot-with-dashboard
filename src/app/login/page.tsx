@@ -4,12 +4,14 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Mail, Lock, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Eye, EyeOff, ShieldCheck, Key, Zap } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const [loginMethod, setLoginMethod] = useState<'password' | 'token'>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -40,10 +42,15 @@ export default function LoginPage() {
     setErrorMessage('');
 
     try {
+      const payload =
+        loginMethod === 'password'
+          ? { email, password }
+          : { apiKey };
+
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success && data.user) {
@@ -53,7 +60,7 @@ export default function LoginPage() {
           router.push('/userDashboard');
         }
       } else {
-        setErrorMessage(data.message || 'Invalid email or password.');
+        setErrorMessage(data.message || 'Login failed. Please check your credentials.');
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Connection error.');
@@ -63,15 +70,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-10 selection:bg-cyan-500 selection:text-white">
+    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex items-center justify-center p-3 sm:p-6 lg:p-10 selection:bg-cyan-500 selection:text-white">
       {/* Outer Card */}
       <div className="relative w-full max-w-4xl">
         <div className="absolute -inset-1 rounded-[36px] bg-gradient-to-r from-cyan-600/20 to-blue-600/20 blur-xl opacity-60 pointer-events-none" />
 
-        <div className="relative w-full rounded-[32px] bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2 min-h-[480px]">
+        <div className="relative w-full rounded-3xl sm:rounded-[32px] bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-2 min-h-[500px]">
           
-          {/* LEFT SIDE: Pure Clean Free Fire Artwork */}
-          <div className="relative min-h-[260px] sm:min-h-[340px] md:min-h-full overflow-hidden bg-slate-950 border-b md:border-b-0 md:border-r border-slate-800 group">
+          {/* LEFT SIDE: Artwork */}
+          <div className="relative min-h-[180px] sm:min-h-[280px] md:min-h-full overflow-hidden bg-slate-950 border-b md:border-b-0 md:border-r border-slate-800 group">
             <Image
               src="/login-banner.jpg"
               alt="Free Fire"
@@ -79,17 +86,16 @@ export default function LoginPage() {
               priority
               className="object-cover object-center filter brightness-95 group-hover:scale-105 transition-transform duration-700"
             />
-            {/* Subtle Gradient */}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent" />
           </div>
 
-          {/* RIGHT SIDE: Website Name & Sign In Form */}
-          <div className="p-6 sm:p-10 flex flex-col justify-between space-y-6 bg-slate-900/95">
-            {/* Website Brand Name on the Right Side */}
+          {/* RIGHT SIDE: Sign In Form */}
+          <div className="p-5 sm:p-8 md:p-10 flex flex-col justify-between space-y-5 bg-slate-900/95">
+            {/* Website Brand Header */}
             <div className="space-y-3">
               <Link
                 href="/"
-                className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-slate-950 border border-slate-800 text-white font-black text-xs hover:border-cyan-500 transition-colors shadow-md"
+                className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-black text-xs hover:border-cyan-500 transition-colors shadow-md"
               >
                 {siteSettings.logoUrl ? (
                   <div className="relative w-6 h-6 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-900">
@@ -104,9 +110,44 @@ export default function LoginPage() {
               </Link>
 
               <div>
-                <h1 className="text-2xl font-black text-white tracking-tight">Sign In to Account</h1>
-                <p className="text-xs text-slate-400 mt-0.5">Enter your email and password to continue.</p>
+                <h1 className="text-2xl font-black text-white tracking-tight">Portal Access</h1>
+                <p className="text-xs text-slate-400 mt-0.5">Sign in with your email or directly with your API Key token.</p>
               </div>
+            </div>
+
+            {/* Login Method Toggle */}
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMethod('password');
+                  setErrorMessage('');
+                }}
+                className={`py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  loginMethod === 'password'
+                    ? 'bg-slate-800 text-cyan-400 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>Password</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMethod('token');
+                  setErrorMessage('');
+                }}
+                className={`py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  loginMethod === 'token'
+                    ? 'bg-slate-800 text-cyan-400 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Key className="w-3.5 h-3.5" />
+                <span>API Token</span>
+              </button>
             </div>
 
             {/* Error Message */}
@@ -117,49 +158,71 @@ export default function LoginPage() {
             )}
 
             <form onSubmit={handleLogin} className="space-y-3.5 text-xs">
-              <div className="space-y-1">
-                <label className="block text-slate-300 font-medium">Email Address</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors font-mono"
-                    required
-                  />
-                </div>
-              </div>
+              {loginMethod === 'password' ? (
+                <>
+                  <div className="space-y-1">
+                    <label className="block text-slate-300 font-medium">Email Address</label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="name@example.com"
+                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors font-mono"
+                        required
+                      />
+                    </div>
+                  </div>
 
-              <div className="space-y-1">
-                <label className="block text-slate-300 font-medium">Password</label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-200"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+                  <div className="space-y-1">
+                    <label className="block text-slate-300 font-medium">Password</label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-200"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-1">
+                  <label className="block text-slate-300 font-medium">Your API Key / Secret Token</label>
+                  <div className="relative">
+                    <Key className="w-4 h-4 text-cyan-400 absolute left-3.5 top-3.5" />
+                    <input
+                      type="text"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="APEX-XXXX-XXXX-XXXX"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-cyan-400 placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors font-mono font-bold select-all"
+                      required
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-500 pt-1">
+                    Paste your assigned API token to enter your client dashboard instantly without password.
+                  </p>
                 </div>
-              </div>
+              )}
 
               <button
                 type="submit"
                 disabled={loading}
                 className="w-full py-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold text-white shadow-md shadow-cyan-600/30 transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] mt-2"
               >
-                <span>{loading ? 'Signing in...' : 'Sign In'}</span>
+                <span>{loading ? 'Authenticating...' : loginMethod === 'token' ? 'Access with Token' : 'Sign In'}</span>
                 {!loading && <ArrowRight className="w-4 h-4" />}
               </button>
             </form>

@@ -6,11 +6,48 @@ import { Page } from 'puppeteer';
 import dbConnect from '../../utils/db';
 import GarenaAccount, { IGarenaAccount } from '../../models/GarenaAccount';
 
+export type GarenaShellsItemType =
+  | 'WEEKLY_MEMBERSHIP'
+  | 'MONTHLY_MEMBERSHIP'
+  | 'WEEKLY_LITE'
+  | 'LEVEL_UP_6'
+  | 'LEVEL_UP_10'
+  | 'LEVEL_UP_15'
+  | 'LEVEL_UP_20'
+  | 'LEVEL_UP_25'
+  | 'LEVEL_UP_30'
+  | 'LEVEL_UP_PASS'
+  | 'SPECIAL_DEAL';
+
 export interface GarenaShellsParams {
   uid: string;
-  itemType: 'LEVEL_UP_PASS' | 'WEEKLY_LITE' | 'MONTHLY_MEMBERSHIP' | 'SPECIAL_DEAL' | '100_DIAMONDS' | '310_DIAMONDS' | '520_DIAMONDS';
+  itemType: GarenaShellsItemType | string;
   shellAuthCookie?: string;
+  playerLevel?: number;
 }
+
+export const ALLOWED_GARENA_SHELL_PACKAGES: string[] = [
+  'WEEKLY_MEMBERSHIP',
+  'MONTHLY_MEMBERSHIP',
+  'WEEKLY_LITE',
+  'LEVEL_UP_6',
+  'LEVEL_UP_10',
+  'LEVEL_UP_15',
+  'LEVEL_UP_20',
+  'LEVEL_UP_25',
+  'LEVEL_UP_30',
+  'LEVEL_UP_PASS',
+];
+
+export const LEVEL_UP_REQUIRED_LEVELS: Record<string, number> = {
+  LEVEL_UP_6: 6,
+  LEVEL_UP_10: 10,
+  LEVEL_UP_15: 15,
+  LEVEL_UP_20: 20,
+  LEVEL_UP_25: 25,
+  LEVEL_UP_30: 30,
+  LEVEL_UP_PASS: 6,
+};
 
 export interface ShellRedeemResult {
   success: boolean;
@@ -23,7 +60,7 @@ export interface ShellRedeemResult {
 /**
  * Get active or primary Garena credentials from Database or Environment
  */
-export async function getActiveGarenaCredentials(): Promise<{
+export async function getActiveGarenaCredentials(userId?: string): Promise<{
   username: string;
   password?: string;
   authCookie?: string;
@@ -32,10 +69,21 @@ export async function getActiveGarenaCredentials(): Promise<{
 }> {
   try {
     await dbConnect();
-    // Try primary active account first
-    let account = await GarenaAccount.findOne({ isPrimary: true, status: 'ACTIVE' }).lean();
+    let account = null;
+
+    if (userId) {
+      account = await GarenaAccount.findOne({ userId, isPrimary: true, status: 'ACTIVE' }).lean();
+      if (!account) {
+        account = await GarenaAccount.findOne({ userId, status: 'ACTIVE' }).sort({ updatedAt: -1 }).lean();
+      }
+    }
+
     if (!account) {
-      account = await GarenaAccount.findOne({ status: 'ACTIVE' }).sort({ updatedAt: -1 }).lean();
+      // Try global primary active account
+      account = await GarenaAccount.findOne({ isPrimary: true, status: 'ACTIVE' }).lean();
+      if (!account) {
+        account = await GarenaAccount.findOne({ status: 'ACTIVE' }).sort({ updatedAt: -1 }).lean();
+      }
     }
 
     if (account) {
@@ -366,11 +414,36 @@ export async function redeemBulkGarenaShellCards(cards: string[]): Promise<Shell
 export async function processGarenaShells({
   uid,
   itemType,
+  playerLevel,
 }: GarenaShellsParams): Promise<AutomationResult> {
-  console.log(`[Garena Shells Worker] Processing item '${itemType}' for Player UID ${uid}`);
+  const normalizedItem = (itemType || 'WEEKLY_MEMBERSHIP').toUpperCase();
+  console.log(`[Garena Shells Worker] Processing Special Deal '${normalizedItem}' for Player UID ${uid}`);
 
   const playerLookup = await getRealPlayerName(uid);
   const playerName = playerLookup.playerName || `Free Fire Player (${uid})`;
+
+  // 1. Validate that only allowed Special Deals can be purchased via Garena Shells
+  if (!ALLOWED_GARENA_SHELL_PACKAGES.includes(normalizedItem)) {
+    return {
+      success: false,
+      errorReason: 'UNSUPPORTED_PACKAGE',
+      message: `Only Special Deals (Weekly Membership, Monthly Membership, Weekly Lite, Level Up Packages 6-30) can be purchased via Garena Shells. '${itemType}' is not supported.`,
+      playerName,
+      voucherType: `Garena Shells (${itemType})`,
+    };
+  }
+
+  // 2. Pre-check Level Up Pass requirement against player level
+  const requiredLevel = LEVEL_UP_REQUIRED_LEVELS[normalizedItem];
+  if (requiredLevel && playerLevel && playerLevel < requiredLevel) {
+    return {
+      success: false,
+      errorReason: 'INSUFFICIENT_LEVEL',
+      message: `Player level (${playerLevel}) is less than the required Level Up Package level (${requiredLevel}). Cannot purchase.`,
+      playerName,
+      voucherType: `Garena Shells (${normalizedItem})`,
+    };
+  }
 
   const browser = await getBrowser();
   const page = await browser.newPage();
@@ -394,33 +467,66 @@ export async function processGarenaShells({
 
     await page.waitForFunction(() => {
       const text = document.body.innerText || '';
-      return text.includes('Player ID') || text.includes('Diamond') || text.includes('Pass') || text.includes('Membership');
+      return text.includes('Player ID') || text.includes('Special') || text.includes('Pass') || text.includes('Membership');
     }, { timeout: 10000 }).catch(() => {});
 
-    // 3. Select Target Item (Level Up Pass / Weekly Lite / Diamonds)
-    await page.evaluate((targetItem) => {
+    // 3. Select Target Special Deal & Check Level Lock
+    const selectionResult = await page.evaluate((targetItem, reqLvl) => {
       const allButtons = Array.from(document.querySelectorAll('div, button, a, span, p, li'));
       const searchTerms: Record<string, string[]> = {
-        LEVEL_UP_PASS: ['level up pass', 'level up'],
-        WEEKLY_LITE: ['weekly lite', 'weekly membership lite', 'weekly'],
+        WEEKLY_MEMBERSHIP: ['weekly membership', 'weekly'],
         MONTHLY_MEMBERSHIP: ['monthly membership', 'monthly'],
-        SPECIAL_DEAL: ['special deal', 'special'],
-        '100_DIAMONDS': ['100 diamond', '100 diamonds'],
-        '310_DIAMONDS': ['310 diamond', '310 diamonds'],
-        '520_DIAMONDS': ['520 diamond', '520 diamonds'],
+        WEEKLY_LITE: ['weekly lite', 'weekly membership lite'],
+        LEVEL_UP_6: ['level up package - level 6', 'level up package 6', 'level up 6', 'level 6'],
+        LEVEL_UP_10: ['level up package - level 10', 'level up package 10', 'level up 10', 'level 10'],
+        LEVEL_UP_15: ['level up package - level 15', 'level up package 15', 'level up 15', 'level 15'],
+        LEVEL_UP_20: ['level up package - level 20', 'level up package 20', 'level 20', 'level 20'],
+        LEVEL_UP_25: ['level up package - level 25', 'level up package 25', 'level 25', 'level 25'],
+        LEVEL_UP_30: ['level up package - level 30', 'level up package 30', 'level 30', 'level 30'],
+        LEVEL_UP_PASS: ['level up pass', 'level up package', 'level up'],
       };
 
       const terms = searchTerms[targetItem] || [targetItem.toLowerCase()];
       for (const el of allButtons) {
         const txt = (el.textContent || '').toLowerCase();
-        if (terms.some(term => txt.includes(term))) {
-          const clickable = el.closest('button, div[role="button"], a, li') || el;
-          (clickable as HTMLElement).click();
-          return true;
+        if (terms.some((term) => txt.includes(term))) {
+          const card = el.closest('button, div[role="button"], a, li, .card, .item') || el;
+          const cardEl = card as HTMLElement;
+          const cardTxt = (cardEl.textContent || '').toLowerCase();
+          const cardStyle = window.getComputedStyle(cardEl);
+
+          // Check if card is locked or disabled due to insufficient player level
+          const isDisabled =
+            cardEl.hasAttribute('disabled') ||
+            cardEl.getAttribute('aria-disabled') === 'true' ||
+            cardEl.className.includes('disabled') ||
+            cardEl.className.includes('locked') ||
+            cardStyle.opacity === '0.5' ||
+            cardStyle.cursor === 'not-allowed' ||
+            cardTxt.includes('insufficient') ||
+            cardTxt.includes('unqualified') ||
+            cardTxt.includes('level too low');
+
+          if (isDisabled && reqLvl) {
+            return { selected: false, levelLocked: true, message: `Player level is insufficient for Level Up Package (Level ${reqLvl}).` };
+          }
+
+          cardEl.click();
+          return { selected: true, levelLocked: false };
         }
       }
-      return false;
-    }, itemType);
+      return { selected: false, levelLocked: false };
+    }, normalizedItem, requiredLevel);
+
+    if (selectionResult.levelLocked) {
+      return {
+        success: false,
+        errorReason: 'INSUFFICIENT_LEVEL',
+        message: selectionResult.message || `Player level is less than the required Level Up Package level (${requiredLevel}). Cannot purchase.`,
+        playerName,
+        voucherType: `Garena Shells (${normalizedItem})`,
+      };
+    }
 
     // 4. Select Garena Shells payment method
     await page.evaluate(() => {
@@ -454,9 +560,9 @@ export async function processGarenaShells({
 
     return {
       success: true,
-      message: `Garena Shells transaction completed! Item ${itemType} activated for Player ${playerName} (UID: ${uid}).`,
+      message: `Garena Shells transaction completed! ${normalizedItem} activated for Player ${playerName} (UID: ${uid}).`,
       playerName,
-      voucherType: `Garena Shells (${itemType})`,
+      voucherType: `Garena Shells (${normalizedItem})`,
       orderId,
     };
   } catch (error: any) {
@@ -464,9 +570,9 @@ export async function processGarenaShells({
     const orderId = `SHELL_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
     return {
       success: true,
-      message: `Garena Shells transaction completed. ${itemType} activated for Player ${playerName} (UID: ${uid}).`,
+      message: `Garena Shells transaction completed. ${normalizedItem} activated for Player ${playerName} (UID: ${uid}).`,
       playerName,
-      voucherType: `Garena Shells (${itemType})`,
+      voucherType: `Garena Shells (${normalizedItem})`,
       orderId,
     };
   } finally {

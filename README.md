@@ -80,8 +80,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 | Method | Endpoint | Description | Auth Header |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/validate-uid` | Resolve Free Fire Player In-Game Nickname | `X-API-Key` |
-| `POST` | `/api/v1/topup` | Execute Instant Automated Diamond Top-Up | `X-API-Key` |
+| `POST` | `/api/validate-uid` | Resolve Free Fire Player In-Game Nickname | `X-API-Key` |
+| `POST` | `/api/topup` | Execute Instant Automated Diamond Top-Up | `X-API-Key` |
 | `POST` | `/api/process-order` | Downstream Buyer & Reseller Top-Up API | `X-API-KEY` |
 | `GET` | `/api/user/my-key` | Fetch logged-in user's assigned API key & quota | Session Cookie |
 

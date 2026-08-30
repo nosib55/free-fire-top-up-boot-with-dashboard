@@ -296,7 +296,7 @@ export default function SystemSettingsPage() {
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold text-white shadow-md shadow-cyan-600/30 transition-all text-xs"
+            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold text-white shadow-md shadow-cyan-600/30 transition-all text-xs w-full sm:w-auto"
           >
             <Save className="w-4 h-4" />
             <span>{saving ? 'Saving Settings...' : 'Save Settings'}</span>

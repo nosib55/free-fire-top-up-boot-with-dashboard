@@ -58,14 +58,12 @@ export async function GET() {
           name: user.name,
           email: user.email,
           role: user.role,
-          balance: user.balance || 0,
           hitBalance: user.hitBalance || 0,
         },
         resellerProfile: resellerProfile ? {
           brandingTag: resellerProfile.brandingTag,
           masterQuotaBalance: resellerProfile.masterQuotaBalance,
           allocatedQuota: resellerProfile.allocatedQuota,
-          discountRate: resellerProfile.discountRate,
         } : null,
       });
     }
@@ -85,14 +83,12 @@ export async function GET() {
         name: user.name,
         email: user.email,
         role: user.role,
-        balance: user.balance || 0,
         hitBalance: user.hitBalance || 0,
       },
       resellerProfile: resellerProfile ? {
         brandingTag: resellerProfile.brandingTag,
         masterQuotaBalance: resellerProfile.masterQuotaBalance,
         allocatedQuota: resellerProfile.allocatedQuota,
-        discountRate: resellerProfile.discountRate,
       } : null,
       key: {
         key: keyDoc.key,

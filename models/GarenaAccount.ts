@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IGarenaAccount extends Document {
+  userId?: mongoose.Types.ObjectId | string;
   username: string;
   password?: string;
   accountNickname: string;
@@ -19,6 +20,7 @@ export interface IGarenaAccount extends Document {
 
 const GarenaAccountSchema = new Schema<IGarenaAccount>(
   {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     username: { type: String, required: true, trim: true },
     password: { type: String, default: '' },
     accountNickname: { type: String, default: 'Primary Garena Account' },
