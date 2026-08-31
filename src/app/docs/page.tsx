@@ -606,19 +606,19 @@ echo $response;`,
                     </thead>
                     <tbody className="divide-y divide-slate-800 font-mono">
                       <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 font-sans font-bold text-white">Weekly Membership (উইকলি)</td>
+                        <td className="p-3.5 font-sans font-bold text-white">Weekly Membership</td>
                         <td className="p-3.5 text-amber-400 font-bold">WEEKLY_MEMBERSHIP</td>
                         <td className="p-3.5 text-slate-400 font-sans">None</td>
                         <td className="p-3.5 font-sans text-slate-400">Delivers weekly membership benefits to player</td>
                       </tr>
                       <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 font-sans font-bold text-white">Monthly Membership (মান্থলি)</td>
+                        <td className="p-3.5 font-sans font-bold text-white">Monthly Membership</td>
                         <td className="p-3.5 text-amber-400 font-bold">MONTHLY_MEMBERSHIP</td>
                         <td className="p-3.5 text-slate-400 font-sans">None</td>
                         <td className="p-3.5 font-sans text-slate-400">Delivers monthly membership benefits to player</td>
                       </tr>
                       <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 font-sans font-bold text-white">Weekly Lite (উইকলি লাইট)</td>
+                        <td className="p-3.5 font-sans font-bold text-white">Weekly Lite</td>
                         <td className="p-3.5 text-amber-400 font-bold">WEEKLY_LITE</td>
                         <td className="p-3.5 text-slate-400 font-sans">None</td>
                         <td className="p-3.5 font-sans text-slate-400">Lite weekly subscription tier</td>

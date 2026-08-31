@@ -871,15 +871,15 @@ export default function UserDashboardPage() {
                           onChange={(e) => setTestPackageId(e.target.value)}
                           className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-white font-bold"
                         >
-                          <option value="WEEKLY_MEMBERSHIP">Weekly Membership (উইকলি মেম্বারশিপ)</option>
-                          <option value="MONTHLY_MEMBERSHIP">Monthly Membership (মান্থলি মেম্বারশিপ)</option>
-                          <option value="LEVEL_UP_6">Level Up Package - Level 6 (লেভেল ৬ পাস)</option>
-                          <option value="LEVEL_UP_10">Level Up Package - Level 10 (লেভেল ১০ পাস)</option>
-                          <option value="LEVEL_UP_15">Level Up Package - Level 15 (লেভেল ১৫ পাস)</option>
-                          <option value="LEVEL_UP_20">Level Up Package - Level 20 (লেভেল ২০ পাস)</option>
-                          <option value="LEVEL_UP_25">Level Up Package - Level 25 (লেভেল ২৫ পাস)</option>
-                          <option value="LEVEL_UP_30">Level Up Package - Level 30 (লেভেল ৩০ পাস)</option>
-                          <option value="WEEKLY_LITE">Weekly Lite (উইকলি লাইট)</option>
+                          <option value="WEEKLY_MEMBERSHIP">Weekly Membership</option>
+                          <option value="MONTHLY_MEMBERSHIP">Monthly Membership</option>
+                          <option value="LEVEL_UP_6">Level Up Package - Level 6</option>
+                          <option value="LEVEL_UP_10">Level Up Package - Level 10</option>
+                          <option value="LEVEL_UP_15">Level Up Package - Level 15</option>
+                          <option value="LEVEL_UP_20">Level Up Package - Level 20</option>
+                          <option value="LEVEL_UP_25">Level Up Package - Level 25</option>
+                          <option value="LEVEL_UP_30">Level Up Package - Level 30</option>
+                          <option value="WEEKLY_LITE">Weekly Lite</option>
                         </select>
                       </div>
 
@@ -1147,9 +1147,9 @@ export default function UserDashboardPage() {
                   onChange={(e: any) => setTxDateFilter(e.target.value)}
                   className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-bold"
                 >
-                  <option value="ALL">All Dates (সব তারিখ)</option>
-                  <option value="TODAY">Today (আজকের লগ)</option>
-                  <option value="YESTERDAY">Yesterday (গতকালের)</option>
+                  <option value="ALL">All Dates</option>
+                  <option value="TODAY">Today</option>
+                  <option value="YESTERDAY">Yesterday</option>
                 </select>
 
                 <select

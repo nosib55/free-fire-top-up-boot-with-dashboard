@@ -164,10 +164,10 @@ export default function AdminAnalyticsPage() {
         <div className="flex flex-wrap items-center gap-1">
           {[
             { id: 'all', label: 'All Time' },
-            { id: 'today', label: 'Today (আজ)' },
-            { id: 'yesterday', label: 'Yesterday (গতকাল)' },
-            { id: '7days', label: 'Last 7 Days (৭ দিন)' },
-            { id: '30days', label: 'Last 30 Days (১ মাস)' },
+            { id: 'today', label: 'Today' },
+            { id: 'yesterday', label: 'Yesterday' },
+            { id: '7days', label: 'Last 7 Days' },
+            { id: '30days', label: 'Last 30 Days' },
           ].map((tab) => (
             <button
               key={tab.id}

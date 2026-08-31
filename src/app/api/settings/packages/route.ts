@@ -3,17 +3,17 @@ import dbConnect from '@/utils/db';
 import SystemSetting, { IPackageRate } from '@/models/SystemSetting';
 
 const DEFAULT_PACKAGE_RATES: IPackageRate[] = [
-  { packageId: '25_DIAMONDS', name: '25 Diamonds (২৫ ডায়মন্ড)', priceBdt: 20, diamonds: 25, category: 'DIAMOND', isActive: true },
-  { packageId: '50_DIAMONDS', name: '50 Diamonds (৫০ ডায়মন্ড)', priceBdt: 40, diamonds: 50, category: 'DIAMOND', isActive: true },
-  { packageId: '100_DIAMONDS', name: '100 / 115 Diamonds (১০০ ডায়মন্ড)', priceBdt: 80, diamonds: 100, category: 'DIAMOND', isActive: true },
-  { packageId: '240_DIAMONDS', name: '240 / 310 Diamonds (৩১০ ডায়মন্ড)', priceBdt: 200, diamonds: 310, category: 'DIAMOND', isActive: true },
-  { packageId: '520_DIAMONDS', name: '520 / 610 Diamonds (৫২০ ডায়মন্ড)', priceBdt: 400, diamonds: 520, category: 'DIAMOND', isActive: true },
-  { packageId: '1240_DIAMONDS', name: '1240 Diamonds (১২৪০ ডায়মন্ড)', priceBdt: 800, diamonds: 1240, category: 'DIAMOND', isActive: true },
-  { packageId: '2530_DIAMONDS', name: '2530 Diamonds (২৫৩০ ডায়মন্ড)', priceBdt: 1600, diamonds: 2530, category: 'DIAMOND', isActive: true },
-  { packageId: 'WEEKLY_LITE', name: 'Weekly Lite Membership (উইকলি লাইট)', priceBdt: 40, diamonds: 0, category: 'MEMBERSHIP', isActive: true },
-  { packageId: 'WEEKLY_MEMBERSHIP', name: 'Weekly Membership (উইকলি মেম্বারশিপ)', priceBdt: 160, diamonds: 0, category: 'MEMBERSHIP', isActive: true },
-  { packageId: 'MONTHLY_MEMBERSHIP', name: 'Monthly Membership (মান্থলি মেম্বারশিপ)', priceBdt: 800, diamonds: 0, category: 'MEMBERSHIP', isActive: true },
-  { packageId: 'LEVEL_UP_PASS', name: 'Level Up Pass (লেভেল আপ পাস)', priceBdt: 160, diamonds: 0, category: 'SPECIAL', isActive: true },
+  { packageId: '25_DIAMONDS', name: '25 Diamonds', priceBdt: 20, diamonds: 25, category: 'DIAMOND', isActive: true },
+  { packageId: '50_DIAMONDS', name: '50 Diamonds', priceBdt: 40, diamonds: 50, category: 'DIAMOND', isActive: true },
+  { packageId: '100_DIAMONDS', name: '100 / 115 Diamonds', priceBdt: 80, diamonds: 100, category: 'DIAMOND', isActive: true },
+  { packageId: '240_DIAMONDS', name: '240 / 310 Diamonds', priceBdt: 200, diamonds: 310, category: 'DIAMOND', isActive: true },
+  { packageId: '520_DIAMONDS', name: '520 / 610 Diamonds', priceBdt: 400, diamonds: 520, category: 'DIAMOND', isActive: true },
+  { packageId: '1240_DIAMONDS', name: '1240 Diamonds', priceBdt: 800, diamonds: 1240, category: 'DIAMOND', isActive: true },
+  { packageId: '2530_DIAMONDS', name: '2530 Diamonds', priceBdt: 1600, diamonds: 2530, category: 'DIAMOND', isActive: true },
+  { packageId: 'WEEKLY_LITE', name: 'Weekly Lite Membership', priceBdt: 40, diamonds: 0, category: 'MEMBERSHIP', isActive: true },
+  { packageId: 'WEEKLY_MEMBERSHIP', name: 'Weekly Membership', priceBdt: 160, diamonds: 0, category: 'MEMBERSHIP', isActive: true },
+  { packageId: 'MONTHLY_MEMBERSHIP', name: 'Monthly Membership', priceBdt: 800, diamonds: 0, category: 'MEMBERSHIP', isActive: true },
+  { packageId: 'LEVEL_UP_PASS', name: 'Level Up Pass', priceBdt: 160, diamonds: 0, category: 'SPECIAL', isActive: true },
 ];
 
 export async function GET() {
