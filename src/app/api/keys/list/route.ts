@@ -148,3 +148,38 @@ export async function PATCH(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  await dbConnect();
+  try {
+    const url = new URL(request.url);
+    let keyId = url.searchParams.get('keyId') || url.searchParams.get('id');
+
+    if (!keyId) {
+      try {
+        const body = await request.json();
+        keyId = body.keyId || body.id;
+      } catch {}
+    }
+
+    if (!keyId) {
+      return NextResponse.json({ success: false, message: 'keyId is required' }, { status: 400 });
+    }
+
+    const keyDoc = await ApiKey.findByIdAndDelete(keyId);
+    if (!keyDoc) {
+      return NextResponse.json({ success: false, message: 'API Key not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `API Key '${keyDoc.key}' permanently deleted.`,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, message: error?.message || 'Failed to delete API key' },
+      { status: 500 }
+    );
+  }
+}
+

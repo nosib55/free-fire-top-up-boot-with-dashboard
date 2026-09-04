@@ -29,8 +29,6 @@ import {
   Server,
   FileCode,
   Sliders,
-  Play,
-  Send,
   HelpCircle,
   Menu,
   X,
@@ -41,8 +39,7 @@ import {
 } from 'lucide-react';
 
 export default function ApiDocsPage() {
-  // Navigation & Server state
-  const [activeServer, setActiveServer] = useState<'bd' | 'mena' | 'id' | 'sg'>('bd');
+  // Navigation state
   const [activeSection, setActiveSection] = useState<string>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,12 +51,6 @@ export default function ApiDocsPage() {
   const [balanceLang, setBalanceLang] = useState<'curl' | 'node' | 'python' | 'php'>('curl');
   const [redeemLang, setRedeemLang] = useState<'curl' | 'node' | 'python' | 'php'>('curl');
   const [checkLang, setCheckLang] = useState<'curl' | 'node' | 'python' | 'php'>('curl');
-
-  // Interactive tester state
-  const [testUid, setTestUid] = useState('5162333961');
-  const [testResult, setTestResult] = useState<any>(null);
-  const [testLoading, setTestLoading] = useState(false);
-  const [testError, setTestError] = useState<string | null>(null);
 
   // Copy feedback state
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -96,32 +87,6 @@ export default function ApiDocsPage() {
     setTimeout(() => setCopiedKey(null), 2000);
   }
 
-  // Live UID test executor
-  async function handleTestLookup() {
-    if (!testUid.trim()) return;
-    setTestLoading(true);
-    setTestError(null);
-    setTestResult(null);
-
-    try {
-      const res = await fetch('/api/v1/validate-uid', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: testUid.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setTestError(data.message || 'Validation request failed');
-      } else {
-        setTestResult(data);
-      }
-    } catch (err: any) {
-      setTestError(err.message || 'Failed to connect to API endpoint');
-    } finally {
-      setTestLoading(false);
-    }
-  }
-
   // Nav items list
   const navItems = [
     { id: 'overview', label: 'Overview', icon: Zap, badge: 'Gateway' },
@@ -138,7 +103,6 @@ export default function ApiDocsPage() {
     { id: 'callback', label: 'Callbacks & Webhooks', icon: RefreshCw, badge: 'Async' },
     { id: 'errors', label: 'Error Codes', icon: ShieldAlert, badge: 'Zero-Loss' },
     { id: 'notes', label: 'Key Notes & Rules', icon: HelpCircle, badge: 'Important' },
-    { id: 'interactive-tester', label: 'Interactive Sandbox', icon: Play, badge: 'Live Test' },
   ];
 
   const filteredNavItems = useMemo(() => {
@@ -231,50 +195,10 @@ export default function ApiDocsPage() {
               <Globe className="w-3.5 h-3.5 text-cyan-400" /> Server:
             </span>
 
-            <button
-              onClick={() => setActiveServer('bd')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
-                activeServer === 'bd'
-                  ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30 border border-cyan-400/40'
-                  : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
-              }`}
-            >
+            <div className="px-3.5 py-1.5 rounded-lg text-xs font-bold shrink-0 flex items-center gap-1.5 bg-cyan-600 text-white shadow-md shadow-cyan-600/30 border border-cyan-400/40">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
               <span>BD (Bangladesh - UniPin + Shell)</span>
-            </button>
-
-            <button
-              onClick={() => setActiveServer('mena')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
-                activeServer === 'mena'
-                  ? 'bg-cyan-600 text-white'
-                  : 'bg-slate-900/60 text-slate-500 hover:text-slate-300 border border-slate-800/60'
-              }`}
-            >
-              <span>MENA (PIN Voucher)</span>
-            </button>
-
-            <button
-              onClick={() => setActiveServer('id')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
-                activeServer === 'id'
-                  ? 'bg-cyan-600 text-white'
-                  : 'bg-slate-900/60 text-slate-500 hover:text-slate-300 border border-slate-800/60'
-              }`}
-            >
-              <span>ID (Indonesia Shell)</span>
-            </button>
-
-            <button
-              onClick={() => setActiveServer('sg')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
-                activeServer === 'sg'
-                  ? 'bg-cyan-600 text-white'
-                  : 'bg-slate-900/60 text-slate-500 hover:text-slate-300 border border-slate-800/60'
-              }`}
-            >
-              <span>SG (Singapore Shell)</span>
-            </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
@@ -1241,80 +1165,6 @@ Authorization: Bearer YOUR_API_KEY
                     Always generate and transmit a unique <code className="text-purple-300">orderid</code> with every top-up request. If a network disruption occurs, retrying the identical <code className="text-purple-300">orderid</code> prevents double-charging or duplicate voucher redemption.
                   </p>
                 </div>
-              </div>
-            </section>
-
-            {/* ==================== SECTION: INTERACTIVE SANDBOX ==================== */}
-            <section id="interactive-tester" className="scroll-mt-36 space-y-6">
-              <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5">
-                    <Play className="w-6 h-6 text-emerald-400" />
-                    <span>Interactive API Sandbox</span>
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                    Test live player UID verification directly from this documentation page.
-                  </p>
-                </div>
-                <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-mono font-bold">
-                  LIVE TEST
-                </span>
-              </div>
-
-              <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-300">
-                    Test Free Fire Player UID:
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="text"
-                      placeholder="e.g. 5162333961"
-                      value={testUid}
-                      onChange={(e) => setTestUid(e.target.value)}
-                      className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm font-mono text-white focus:outline-none focus:border-cyan-500"
-                    />
-                    <button
-                      onClick={handleTestLookup}
-                      disabled={testLoading}
-                      className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-600/30 transition-all"
-                    >
-                      {testLoading ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Checking...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4" />
-                          <span>Verify Live UID</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {testResult && (
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Player Validated Successfully:</span>
-                    </div>
-                    <pre className="text-xs font-mono text-emerald-300 overflow-x-auto">
-                      {JSON.stringify(testResult, null, 2)}
-                    </pre>
-                  </div>
-                )}
-
-                {testError && (
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-rose-500/30 space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-rose-400">
-                      <AlertTriangle className="w-4 h-4" />
-                      <span>Lookup Error:</span>
-                    </div>
-                    <p className="text-xs font-mono text-rose-300">{testError}</p>
-                  </div>
-                )}
               </div>
             </section>
           </main>
