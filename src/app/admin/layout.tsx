@@ -27,7 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [siteSettings, setSiteSettings] = useState({
-    siteName: 'Apex Top-Up',
+    siteName: 'AMS Topup',
     logoUrl: '',
   });
 
@@ -40,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         const data = await res.json();
         if (data.success && data.settings) {
           setSiteSettings({
-            siteName: data.settings.siteName || 'Apex Top-Up',
+            siteName: data.settings.siteName || 'AMS Topup',
             logoUrl: data.settings.logoUrl || '',
           });
         }

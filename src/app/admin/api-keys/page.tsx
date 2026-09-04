@@ -53,7 +53,7 @@ export default function ApiKeyManagerPage() {
   const [userEmail, setUserEmail] = useState('');
   const [totalLimit, setTotalLimit] = useState('500');
   const [expiryDays, setExpiryDays] = useState('30');
-  const [keyPrefix, setKeyPrefix] = useState('APEX');
+  const [keyPrefix, setKeyPrefix] = useState('AMS');
   const [submittingCreate, setSubmittingCreate] = useState(false);
 
   // Unified Edit Modal State

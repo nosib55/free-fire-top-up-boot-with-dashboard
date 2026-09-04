@@ -203,7 +203,7 @@ export async function POST(request: Request) {
 ❌ *Failed / Skipped:* ${failedRequests.toLocaleString()}
 🕒 *Generated At:* ${now.toLocaleString('en-US', { timeZone: 'Asia/Dhaka' })} (BDT)
 
-_Automated Dispatch from Apex Platform Analytics_`;
+_Automated Dispatch from AMS Platform Analytics_`;
 
       const sent = await sendTelegramAdminAlert(reportMessage);
       return NextResponse.json({

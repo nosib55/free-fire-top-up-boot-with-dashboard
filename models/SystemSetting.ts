@@ -70,7 +70,7 @@ const DEFAULT_PACKAGE_RATES: IPackageRate[] = [
 
 const SystemSettingSchema = new Schema<ISystemSetting>(
   {
-    siteName: { type: String, default: 'Apex Top-Up' },
+    siteName: { type: String, default: 'AMS Topup' },
     description: { type: String, default: 'Automated Game & Free Fire Top-Up API-as-a-Service Platform for Developers & Resellers' },
     logoUrl: { type: String, default: '/login-banner.jpg' },
     upstreamServerUrl: { type: String, default: 'https://shop.garena.my/api/process-order' },
@@ -97,7 +97,7 @@ const SystemSettingSchema = new Schema<ISystemSetting>(
     showAnnouncement: { type: Boolean, default: true },
     heroHeadline: { type: String, default: 'Automated Free Fire Top-Up Gateway' },
     heroSubtitle: { type: String, default: 'Sub-second API execution, automated UniPin voucher redemption, live player nickname validation, and multi-pipeline infrastructure for top-up businesses.' },
-    supportTelegram: { type: String, default: 'https://t.me/ApexTopUpSupport' },
+    supportTelegram: { type: String, default: 'https://t.me/AMSTopupSupport' },
     supportWhatsapp: { type: String, default: '+8801605409721' },
     maintenanceMode: { type: Boolean, default: false },
     maintenanceNotice: { type: String, default: 'Scheduled system maintenance in progress. Services will resume shortly.' },
@@ -113,7 +113,7 @@ const SystemSettingSchema = new Schema<ISystemSetting>(
     telegramAutoAlerts: { type: Boolean, default: true },
     telegramWelcomeMessage: {
       type: String,
-      default: '🤖 Welcome to Apex Top-Up Automated Bot! Use /help to see available administrative commands.',
+      default: '🤖 Welcome to AMS Topup Automated Bot! Use /help to see available administrative commands.',
     },
 
     // Active Garena Worker Account

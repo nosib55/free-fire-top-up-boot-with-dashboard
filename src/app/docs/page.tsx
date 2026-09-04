@@ -163,11 +163,11 @@ export default function ApiDocsPage() {
             </button>
             <Link href="/" className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center font-black text-xs text-white shadow-lg shadow-cyan-600/30">
-                FF
+                AMS
               </div>
               <div>
                 <span className="font-extrabold text-sm sm:text-base text-white tracking-tight">
-                  Free Fire API Docs
+                  AMS Topup API Docs
                 </span>
                 <span className="hidden sm:inline-block ml-2 text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-semibold">
                   BD Region V2.5

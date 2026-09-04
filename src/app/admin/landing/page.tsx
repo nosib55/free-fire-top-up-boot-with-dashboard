@@ -26,7 +26,7 @@ export default function LandingControlPage() {
     announcementText: '⚡ 100% Instant Delivery • BDMB & UPBD Automation Engine Active',
     heroHeadline: 'Automated Free Fire Top-Up Gateway',
     heroSubtitle: 'Sub-second API execution, automated UniPin voucher redemption, live player nickname validation, and multi-pipeline infrastructure for top-up businesses.',
-    supportTelegram: 'https://t.me/ApexTopUpSupport',
+    supportTelegram: 'https://t.me/AMSTopupSupport',
     supportWhatsapp: '+8801605409721',
     maintenanceMode: false,
     maintenanceNotice: 'Scheduled system maintenance in progress. Services will resume shortly.',
@@ -230,7 +230,7 @@ export default function LandingControlPage() {
                 type="text"
                 value={form.supportTelegram}
                 onChange={(e) => setForm({ ...form, supportTelegram: e.target.value })}
-                placeholder="https://t.me/ApexTopUpSupport"
+                placeholder="https://t.me/AMSTopupSupport"
                 className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:outline-none focus:border-cyan-500"
               />
             </div>

@@ -25,13 +25,13 @@ export default function LandingPage() {
 
   // Landing page dynamic settings state
   const [settings, setSettings] = useState({
-    siteName: 'Apex Top-Up',
+    siteName: 'AMS Topup',
     logoUrl: '',
     showAnnouncement: true,
     announcementText: '⚡ 100% Instant Delivery • BDMB & UPBD Automation Engine Active',
     heroHeadline: 'Automated Free Fire Top-Up Gateway',
     heroSubtitle: 'Sub-second API execution, automated UniPin voucher redemption, live player nickname validation, and multi-pipeline infrastructure for top-up businesses.',
-    supportTelegram: 'https://t.me/ApexTopUpSupport',
+    supportTelegram: 'https://t.me/AMSTopupSupport',
     supportWhatsapp: '+8801605409721',
     maintenanceMode: false,
     maintenanceNotice: 'Scheduled system maintenance in progress. Services will resume shortly.',
@@ -110,12 +110,12 @@ export default function LandingPage() {
                 </div>
               ) : (
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-cyan-600 flex items-center justify-center font-black text-xs sm:text-sm text-white shadow-md shadow-cyan-600/30 shrink-0">
-                  {settings.siteName ? settings.siteName.substring(0, 4).toUpperCase() : 'APEX'}
+                  {settings.siteName ? settings.siteName.substring(0, 4).toUpperCase() : 'AMS'}
                 </div>
               )}
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent whitespace-nowrap">
-                  {settings.siteName || 'Apex Top-Up'}
+                  {settings.siteName || 'AMS Topup'}
                 </span>
                 <span className="hidden sm:inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 whitespace-nowrap">
                   B2B Enterprise
@@ -394,7 +394,7 @@ export default function LandingPage() {
       <footer className="border-t border-slate-800/80 bg-slate-950 py-8 px-4 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <span className="font-extrabold text-white">Apex Top-Up B2B Gateway</span> • All rights reserved © 2026
+            <span className="font-extrabold text-white">AMS Topup B2B Gateway</span> • All rights reserved © 2026
           </div>
           <div className="flex items-center gap-4 text-slate-400">
             {settings.supportTelegram && (

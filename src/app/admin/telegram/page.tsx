@@ -30,7 +30,7 @@ export default function TelegramBotSetupPage() {
   const [botEnabled, setBotEnabled] = useState(true);
   const [autoAlerts, setAutoAlerts] = useState(true);
   const [welcomeMessage, setWelcomeMessage] = useState(
-    '🤖 Welcome to Apex Top-Up Automated Bot! Use /help to view available commands.'
+    '🤖 Welcome to AMS Topup Automated Bot! Use /help to view available commands.'
   );
 
   const [botInfo, setBotInfo] = useState<any>(null);
@@ -297,7 +297,7 @@ export default function TelegramBotSetupPage() {
             <div>
               <div className="flex items-center gap-2.5">
                 <h2 className="text-lg font-black text-white">
-                  {botInfo?.firstName || botUsername || 'Apex Telegram Bot'}
+                  {botInfo?.firstName || botUsername || 'AMS Telegram Bot'}
                 </h2>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1 ${

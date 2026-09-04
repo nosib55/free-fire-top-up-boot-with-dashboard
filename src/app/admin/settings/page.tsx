@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export default function SystemSettingsPage() {
-  const [siteName, setSiteName] = useState('Apex Top-Up B2B SaaS');
+  const [siteName, setSiteName] = useState('AMS Topup');
   const [description, setDescription] = useState(
     'Automated Game & Free Fire Top-Up API-as-a-Service Platform for Developers & Resellers'
   );
@@ -43,7 +43,7 @@ export default function SystemSettingsPage() {
       const res = await fetch('/api/settings');
       const data = await res.json();
       if (data.success && data.settings) {
-        setSiteName(data.settings.siteName || 'Apex Top-Up B2B SaaS');
+        setSiteName(data.settings.siteName || 'AMS Topup');
         setDescription(data.settings.description || '');
         setLogoUrl(data.settings.logoUrl || '/login-banner.jpg');
         setUpstreamServerUrl(data.settings.upstreamServerUrl || 'https://shop.garena.my/api/process-order');

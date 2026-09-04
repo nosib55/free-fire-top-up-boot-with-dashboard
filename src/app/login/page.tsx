@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [siteSettings, setSiteSettings] = useState({
-    siteName: 'Apex Top-Up',
+    siteName: 'AMS Topup',
     logoUrl: '',
   });
 
@@ -27,7 +27,7 @@ export default function LoginPage() {
         const data = await res.json();
         if (data.success && data.settings) {
           setSiteSettings({
-            siteName: data.settings.siteName || 'Apex Top-Up',
+            siteName: data.settings.siteName || 'AMS Topup',
             logoUrl: data.settings.logoUrl || '',
           });
         }
@@ -207,7 +207,7 @@ export default function LoginPage() {
                       type="text"
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="APEX-XXXX-XXXX-XXXX"
+                      placeholder="AMS-XXXX-XXXX-XXXX"
                       className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-cyan-400 placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-colors font-mono font-bold select-all"
                       required
                     />

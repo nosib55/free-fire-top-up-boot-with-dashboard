@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     });
 
     // Automatically generate and attach an active API Key to the new user
-    const generatedKey = `APEX-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const generatedKey = `AMS-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + (Number(expiryDays) || 30));
 

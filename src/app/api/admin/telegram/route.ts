@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       const { customMessage } = body;
       const message =
         customMessage ||
-        `🔔 *Test Notification from Apex Admin Dashboard*
+        `🔔 *Test Notification from AMS Admin Dashboard*
 ━━━━━━━━━━━━━━━━━━━━
 ✅ Telegram bot alert dispatch verified.
 🕒 Time: ${new Date().toLocaleString()}`;

@@ -1,4 +1,4 @@
-# 🎮 Apex Top-Up — Free Fire Automation & B2B SaaS Platform
+# 🎮 AMS Topup — Free Fire Automation & B2B SaaS Platform
 
 A high-speed, enterprise-grade B2B diamond top-up gateway and management SaaS for Garena Free Fire. Features automated UniPin voucher redemption, live player nickname validation, multi-worker execution queue, and an admin dashboard.
 
@@ -88,4 +88,4 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ---
 
 ## 🛡️ License
-Proprietary B2B Software. All rights reserved © 2026 Apex Top-Up.
+Proprietary B2B Software. All rights reserved © 2026 AMS Topup.

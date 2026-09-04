@@ -22,7 +22,7 @@ export async function GET() {
     let settings = await SystemSetting.findOne();
     if (!settings) {
       settings = await SystemSetting.create({
-        siteName: 'Apex Top-Up',
+        siteName: 'AMS Topup',
         packageRates: DEFAULT_PACKAGE_RATES,
       });
     }
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     let settings = await SystemSetting.findOne();
     if (!settings) {
       settings = await SystemSetting.create({
-        siteName: 'Apex Top-Up',
+        siteName: 'AMS Topup',
         packageRates,
       });
     } else {

@@ -34,7 +34,7 @@ export async function getTelegramCredentials(): Promise<{
     const autoAlerts = (setting as any)?.telegramAutoAlerts ?? true;
     const welcomeMessage =
       (setting as any)?.telegramWelcomeMessage ||
-      '🤖 Welcome to Apex Top-Up Automated Bot! Use /help to view available commands.';
+      '🤖 Welcome to AMS Topup Automated Bot! Use /help to view available commands.';
 
     return { botToken, adminChatId, botEnabled, autoAlerts, welcomeMessage };
   } catch {
@@ -43,7 +43,7 @@ export async function getTelegramCredentials(): Promise<{
       adminChatId: process.env.TELEGRAM_ADMIN_CHAT_ID || '',
       botEnabled: true,
       autoAlerts: true,
-      welcomeMessage: '🤖 Welcome to Apex Top-Up Automated Bot! Use /help to view available commands.',
+      welcomeMessage: '🤖 Welcome to AMS Topup Automated Bot! Use /help to view available commands.',
     };
   }
 }
@@ -145,7 +145,7 @@ export async function testTelegramConnection(token?: string, chatId?: string): P
 
     // 2. If chat ID is provided, send a live test ping
     if (targetChatId) {
-      const pingText = `🟢 *Apex Top-Up System — Bot Connection Verified!*
+      const pingText = `🟢 *AMS Topup System — Bot Connection Verified!*
 ━━━━━━━━━━━━━━━━━━━━
 🤖 *Bot:* @${botInfo.username || botInfo.first_name}
 ⚡ *Status:* Online & Operational
@@ -429,6 +429,6 @@ _Tip: Use \`/sync_balance\` to scrape fresh balances right now._`;
   }
 
   // Default Help Menu
-  return `🤖 *Apex Top-Up Telegram Bot*
+  return `🤖 *AMS Topup Telegram Bot*
 Command \`${command}\` not recognized. Use \`/help\` to view all commands.`;
 }

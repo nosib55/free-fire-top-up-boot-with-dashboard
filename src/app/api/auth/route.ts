@@ -135,7 +135,7 @@ export async function POST(request: Request) {
     }
 
     // Master admin account auto-activation guard
-    if (user.role === 'admin' || cleanEmail === 'admin@apex-topup.com') {
+    if (user.role === 'admin' || cleanEmail === 'admin@ams-topup.com' || cleanEmail === 'admin@apex-topup.com') {
       if (user.status !== 'active') {
         user.status = 'active';
         await user.save();

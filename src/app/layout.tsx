@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Apex Top-Up - Automated Game Top-Up API SaaS Platform",
-  description: "Commercial B2B SaaS platform for automated Free Fire & Game top-ups, API key licensing, quota management, and developer tools.",
+  title: "AMS Topup",
+  description: "AMS Topup - Automated Free Fire & Game Top-Up API SaaS Platform",
 };
 
 export default function RootLayout({

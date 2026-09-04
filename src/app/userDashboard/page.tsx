@@ -56,7 +56,7 @@ export default function UserDashboardPage() {
   const [userBalance, setUserBalance] = useState<number>(0);
   const [resellerProfile, setResellerProfile] = useState<any>(null);
   const [brandSettings, setBrandSettings] = useState({
-    siteName: 'Apex Top-Up',
+    siteName: 'AMS Topup',
     logoUrl: '',
   });
 
@@ -342,7 +342,7 @@ export default function UserDashboardPage() {
       const data = JSON.parse(text);
       if (data.success && data.settings) {
         setBrandSettings({
-          siteName: data.settings.siteName || 'Apex Top-Up',
+          siteName: data.settings.siteName || 'AMS Topup',
           logoUrl: data.settings.logoUrl || '',
         });
       }
