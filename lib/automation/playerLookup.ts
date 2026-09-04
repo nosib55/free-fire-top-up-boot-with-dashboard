@@ -23,21 +23,21 @@ export async function getRealPlayerName(uid: string): Promise<RealPlayerInfo> {
     return cached.info;
   }
 
-  console.log(`[PlayerLookup] Looking up UID: ${cleanUid}...`);
+  console.log(`[PlayerLookup] Looking up real Free Fire in-game name for UID: ${cleanUid}...`);
 
-  // 2. Try direct HTTP first (fastest: ~300-500ms)
+  // 2. Try direct HTTP first (if not blocked by DataDome)
   try {
     const res = await fetch('https://shop.garena.my/api/auth/player_id_login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': 'https://shop.garena.my/app/100067/idlogin',
+        'Referer': 'https://shop.garena.my/?app=100067',
         'Origin': 'https://shop.garena.my',
         'Accept': 'application/json, text/plain, */*',
       },
       body: JSON.stringify({ app_id: 100067, login_id: cleanUid, app_server_id: 0 }),
-      signal: AbortSignal.timeout(3500),
+      signal: AbortSignal.timeout(3000),
     });
 
     if (res.ok) {
@@ -62,74 +62,119 @@ export async function getRealPlayerName(uid: string): Promise<RealPlayerInfo> {
       }
     }
   } catch {
-    console.warn('[PlayerLookup] Direct HTTP failed, falling back to browser...');
+    // Fall through to browser automation
   }
 
-  // 3. Browser fallback: navigate Garena shop, enter UID, extract username from page
+  // 3. Automated Browser Engine (navigates Garena Topup Center SPA and extracts exact in-game nickname)
   try {
     const info = await withBrowserPage(async (page) => {
-      await page.goto(`https://shop.garena.my/app/100067/idlogin?_t=${Date.now()}`, {
+      await page.goto(`https://shop.garena.my/?app=100067`, {
         waitUntil: 'domcontentloaded',
-        timeout: 15000,
+        timeout: 25000,
       });
 
-      const uidInput = await page.$('input[placeholder*="player ID"], input.form-input').catch(() => null);
-      if (!uidInput) {
-        const currentText = await page.evaluate(() => document.body.innerText || '').catch(() => '');
-        if (currentText.includes(cleanUid)) {
-          const name = await page.evaluate(() => {
-            const allEls = Array.from(document.querySelectorAll('*'));
-            for (const el of allEls) {
-              const txt = ((el as HTMLElement).innerText || el.textContent || '').trim();
-              const m = txt.match(/^Username:\s*(.+)$/i);
-              if (m && m[1]) return m[1].trim();
-            }
-            return null;
-          }).catch(() => null);
-          if (name) return { success: true, playerName: name, region: 'BD' };
-        }
-        return { success: true, playerName: `Free Fire Player (${cleanUid})`, region: 'BD' };
-      }
-
-      await uidInput.type(cleanUid, { delay: 15 });
+      // Click "Player ID" tab button in the SPA
       await page.evaluate(() => {
-        const btns = Array.from(document.querySelectorAll('button'));
-        for (const b of btns) { if (b.innerText.includes('Login')) { b.click(); return; } }
+        const els = Array.from(document.querySelectorAll('button, div, span, a'));
+        for (const el of els) {
+          const txt = ((el as HTMLElement).innerText || el.textContent || '').trim();
+          if (txt === 'Player ID') {
+            (el as HTMLElement).click();
+            return;
+          }
+        }
       });
 
-      await page.waitForFunction(() => {
-        const text = document.body.innerText || '';
-        return text.includes('Username') || text.includes('Player ID') || text.includes('Diamond');
-      }, { timeout: 8000 }).catch(() => {});
-
-      const playerName = await page.evaluate(() => {
-        const allEls = Array.from(document.querySelectorAll('*'));
-        for (const el of allEls) {
-          const txt = ((el as HTMLElement).innerText || el.textContent || '').trim();
-          const m = txt.match(/^Username:\s*(.+)$/i);
-          if (m && m[1]) return m[1].trim();
-        }
-        const body = document.body.innerText || '';
-        if (body.includes('not found') || body.includes('does not exist')) return '__NOT_FOUND__';
-        return null;
-      }).catch(() => null);
-
-      if (playerName === '__NOT_FOUND__') {
-        return { success: false, playerName: '', message: `Player UID '${cleanUid}' does not exist on Garena Free Fire servers.` };
+      // Wait for the Player ID input field
+      await page.waitForSelector('input[placeholder*="player ID"], input.form-input, input[type="text"]', {
+        timeout: 10000,
+      });
+      const input = await page.$('input[placeholder*="player ID"], input.form-input, input[type="text"]');
+      if (!input) {
+        throw new Error('Player ID input field not found on Garena Topup Center');
       }
-      return { success: true, playerName: playerName || `Free Fire Player (${cleanUid})`, region: 'BD' };
+
+      // Enter the target UID
+      await input.type(cleanUid, { delay: 15 });
+
+      // Click the Login/Confirm button
+      await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        for (const b of buttons) {
+          const t = (b.innerText || '').trim();
+          if (t === 'Login' || t === 'Confirm' || t === 'Submit') {
+            b.click();
+            return;
+          }
+        }
+      });
+
+      // Wait for Username display or invalid error message
+      await page.waitForFunction(
+        () => {
+          const text = document.body.innerText || '';
+          return (
+            text.includes('Username:') ||
+            text.includes('Logout') ||
+            text.includes('not found') ||
+            text.includes('does not exist') ||
+            text.includes('invalid player')
+          );
+        },
+        { timeout: 12000 }
+      );
+
+      // Extract the in-game player name
+      const extraction = await page.evaluate(() => {
+        const text = document.body.innerText || '';
+        const match = text.match(/Username:\s*([^\n\r]+)/i);
+        if (match && match[1]) {
+          return { success: true, playerName: match[1].trim() };
+        }
+        if (
+          text.includes('not found') ||
+          text.includes('does not exist') ||
+          text.includes('invalid player') ||
+          text.includes('Error')
+        ) {
+          return { success: false, notFound: true };
+        }
+        return null;
+      });
+
+      if (extraction?.notFound) {
+        return {
+          success: false,
+          playerName: '',
+          message: `Player UID '${cleanUid}' does not exist on Garena Free Fire servers.`,
+        };
+      }
+
+      if (extraction?.success && extraction.playerName) {
+        return {
+          success: true,
+          playerName: extraction.playerName,
+          region: 'BD',
+        };
+      }
+
+      return {
+        success: true,
+        playerName: `Free Fire Player (${cleanUid})`,
+        region: 'BD',
+      };
     });
 
     if (info.success && info.playerName && !info.playerName.startsWith('Free Fire Player')) {
       nicknameCache.set(cleanUid, { info, timestamp: Date.now() });
-      console.log(`[PlayerLookup] ✅ Browser lookup: ${info.playerName}`);
+      console.log(`[PlayerLookup] ✅ Live Garena Nickname: ${info.playerName}`);
     }
     return info;
   } catch (browserErr: any) {
-    console.warn('[PlayerLookup] Browser fallback error:', browserErr?.message);
+    console.warn('[PlayerLookup] Browser engine error:', browserErr?.message);
   }
 
-  // 4. Final fallback
+  // 4. Fallback if network or Garena fails
   return {
     success: true,
     playerName: `Free Fire Player (${cleanUid})`,

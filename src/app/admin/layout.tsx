@@ -84,7 +84,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="flex items-center gap-3">
               {siteSettings.logoUrl ? (
                 <div className="relative w-9 h-9 rounded-xl overflow-hidden shadow-md shadow-cyan-600/20 shrink-0 border border-slate-700 bg-slate-950">
-                  <Image src={siteSettings.logoUrl} alt="Brand Logo" fill className="object-cover" />
+                  <Image src={siteSettings.logoUrl} alt="Brand Logo" fill sizes="40px" className="object-cover" />
                 </div>
               ) : (
                 <div className="w-9 h-9 rounded-xl bg-cyan-600 flex items-center justify-center text-white font-black text-xs shadow-md shadow-cyan-600/30 shrink-0">
@@ -163,7 +163,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-3 px-2">
             {siteSettings.logoUrl ? (
               <div className="relative w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-cyan-600/20 shrink-0 border border-slate-700 bg-slate-950">
-                <Image src={siteSettings.logoUrl} alt="Brand Logo" fill className="object-cover" />
+                <Image src={siteSettings.logoUrl} alt="Brand Logo" fill sizes="40px" className="object-cover" />
               </div>
             ) : (
               <div className="w-10 h-10 rounded-xl bg-cyan-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-cyan-600/30 shrink-0">

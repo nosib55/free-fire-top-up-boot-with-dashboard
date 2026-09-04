@@ -89,12 +89,12 @@ export async function withBrowserPage<T>(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     );
 
-    // Block images, fonts, media for faster page loads
-    if (options.blockAssets !== false) {
+    // Only intercept if explicitly requested with blockAssets: true
+    if (options.blockAssets === true) {
       await page.setRequestInterception(true);
       page.on('request', (req) => {
         const resourceType = req.resourceType();
-        if (['image', 'font', 'media'].includes(resourceType)) {
+        if (['media'].includes(resourceType)) {
           req.abort();
         } else {
           req.continue();

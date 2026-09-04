@@ -49,6 +49,7 @@ export interface TopUpJobData {
   itemType?: any;
   playerLevel?: number;
   apiKey: string;
+  resellerUserId?: string;
 }
 
 // Active UID locks to prevent double-spending race conditions
@@ -123,7 +124,12 @@ if (redisClient) {
           if (pipeline === 'UNIPIN_WALLET') {
             result = await processUniPinWallet({ uid, diamondPackageId: diamondPackageId || '100_DIAMONDS' });
           } else if (pipeline === 'GARENA_SHELLS') {
-            result = await processGarenaShells({ uid, itemType: itemType || 'WEEKLY_MEMBERSHIP', playerLevel: job.data.playerLevel });
+            result = await processGarenaShells({
+              uid,
+              itemType: itemType || 'WEEKLY_MEMBERSHIP',
+              playerLevel: job.data.playerLevel,
+              resellerUserId: job.data.resellerUserId,
+            });
           } else {
             result = await processUniPinVoucher({ uid, voucherCode: voucherCode || '', serial, pin });
           }
@@ -195,7 +201,12 @@ export async function executeTopupDirect(data: TopUpJobData): Promise<Automation
     if (data.pipeline === 'UNIPIN_WALLET') {
       return await processUniPinWallet({ uid: data.uid, diamondPackageId: data.diamondPackageId || '100_DIAMONDS' });
     } else if (data.pipeline === 'GARENA_SHELLS') {
-      return await processGarenaShells({ uid: data.uid, itemType: data.itemType || 'WEEKLY_MEMBERSHIP', playerLevel: data.playerLevel });
+      return await processGarenaShells({
+        uid: data.uid,
+        itemType: data.itemType || 'WEEKLY_MEMBERSHIP',
+        playerLevel: data.playerLevel,
+        resellerUserId: data.resellerUserId,
+      });
     } else {
       return await processUniPinVoucher({
         uid: data.uid,

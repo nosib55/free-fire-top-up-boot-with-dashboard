@@ -66,6 +66,7 @@ export interface DetectedVoucherInfo {
   matchedPattern: string;
   diamondLabel: string;
   rawAmountKey: string;
+  diamonds: number;
 }
 
 /**
@@ -89,11 +90,14 @@ export function detectUnipinDenomination(voucherText: string): DetectedVoucherIn
           diamondLabel = mappedValue;
         }
 
+        const diamonds = typeof mappedValue === 'number' ? mappedValue : (parseInt(mappedValue, 10) || 0);
+
         return {
           code: amountKey,
           matchedPattern: match[0],
           diamondLabel,
           rawAmountKey: amountKey,
+          diamonds,
         };
       }
     }

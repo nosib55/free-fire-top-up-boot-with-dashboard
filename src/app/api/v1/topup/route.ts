@@ -90,6 +90,7 @@ export async function POST(request: Request) {
       itemType: effectiveItemType as any,
       playerLevel: body.playerLevel ? Number(body.playerLevel) : body.level ? Number(body.level) : undefined,
       apiKey: apiKeyDoc.key,
+      resellerUserId: apiKeyDoc.ownerId ? apiKeyDoc.ownerId.toString() : undefined,
     });
 
     const latencyMs = Date.now() - startTime;
@@ -128,7 +129,32 @@ export async function POST(request: Request) {
       });
     }
 
-    // 4. Failure handling (Insufficient Level vs Invalid UID vs Invalid Voucher vs Worker Error)
+    // 4. Failure handling: NOT_ENOUGH_SHELLS
+    if (executionResult.errorReason === 'NOT_ENOUGH_SHELLS') {
+      await ApiLog.create({
+        apiKey: apiKeyDoc.key,
+        userId: apiKeyDoc.ownerId,
+        endpoint: '/api/v1/topup',
+        uid,
+        status: 'FAILED_NOT_ENOUGH_SHELLS',
+        latencyMs,
+        quotaDeducted: false,
+        ipAddress: clientIp,
+        errorDetails: executionResult.message,
+      });
+
+      return NextResponse.json(
+        {
+          success: false,
+          errorReason: 'NOT_ENOUGH_SHELLS',
+          message: executionResult.message || 'Not enough shell: Garena account balance is insufficient. Please recharge shells.',
+          quotaDeducted: false,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 5. Failure handling (Insufficient Level vs Invalid UID vs Invalid Voucher vs Worker Error)
     if (executionResult.errorReason === 'INSUFFICIENT_LEVEL' || executionResult.errorReason === 'UNSUPPORTED_PACKAGE') {
       await ApiLog.create({
         apiKey: apiKeyDoc.key,
@@ -147,6 +173,55 @@ export async function POST(request: Request) {
           success: false,
           message: executionResult.message,
           errorReason: executionResult.errorReason,
+          quotaDeducted: false,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 4. Failure handling: CONSUMED_VOUCHER & ONLY_FOR_BD_REGION
+    if (executionResult.errorReason === 'CONSUMED_VOUCHER') {
+      await ApiLog.create({
+        apiKey: apiKeyDoc.key,
+        userId: apiKeyDoc.ownerId,
+        endpoint: '/api/v1/topup',
+        uid,
+        status: 'FAILED_CONSUMED_VOUCHER',
+        latencyMs,
+        quotaDeducted: false,
+        ipAddress: clientIp,
+        errorDetails: executionResult.message,
+      });
+
+      return NextResponse.json(
+        {
+          success: false,
+          errorReason: 'CONSUMED_VOUCHER',
+          message: executionResult.message || 'UniPin Voucher is already used/consumed.',
+          quotaDeducted: false,
+        },
+        { status: 400 }
+      );
+    }
+
+    if (executionResult.errorReason === 'ONLY_FOR_BD_REGION') {
+      await ApiLog.create({
+        apiKey: apiKeyDoc.key,
+        userId: apiKeyDoc.ownerId,
+        endpoint: '/api/v1/topup',
+        uid,
+        status: 'FAILED_ONLY_FOR_BD_REGION',
+        latencyMs,
+        quotaDeducted: false,
+        ipAddress: clientIp,
+        errorDetails: executionResult.message,
+      });
+
+      return NextResponse.json(
+        {
+          success: false,
+          errorReason: 'ONLY_FOR_BD_REGION',
+          message: 'Only For BD Region! Target Free Fire account is not registered in Bangladesh.',
           quotaDeducted: false,
         },
         { status: 400 }

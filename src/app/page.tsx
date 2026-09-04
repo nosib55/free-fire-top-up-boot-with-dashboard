@@ -106,7 +106,7 @@ export default function LandingPage() {
             <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
               {settings.logoUrl ? (
                 <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shadow-md shadow-cyan-600/20 shrink-0 border border-slate-700 bg-slate-900">
-                  <Image src={settings.logoUrl} alt="Brand Logo" fill className="object-cover" />
+                  <Image src={settings.logoUrl} alt="Brand Logo" fill sizes="40px" className="object-cover" />
                 </div>
               ) : (
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-cyan-600 flex items-center justify-center font-black text-xs sm:text-sm text-white shadow-md shadow-cyan-600/30 shrink-0">

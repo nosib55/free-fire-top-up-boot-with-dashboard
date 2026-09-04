@@ -84,6 +84,7 @@ export default function LoginPage() {
               alt="Free Fire"
               fill
               priority
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="object-cover object-center filter brightness-95 group-hover:scale-105 transition-transform duration-700"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent" />
@@ -99,7 +100,7 @@ export default function LoginPage() {
               >
                 {siteSettings.logoUrl ? (
                   <div className="relative w-6 h-6 rounded-lg overflow-hidden shrink-0 border border-slate-700 bg-slate-900">
-                    <Image src={siteSettings.logoUrl} alt="Logo" fill className="object-cover" />
+                    <Image src={siteSettings.logoUrl} alt="Logo" fill sizes="24px" className="object-cover" />
                   </div>
                 ) : (
                   <div className="w-6 h-6 rounded-lg bg-cyan-600 flex items-center justify-center text-white text-xs font-black shadow-md shadow-cyan-600/30">

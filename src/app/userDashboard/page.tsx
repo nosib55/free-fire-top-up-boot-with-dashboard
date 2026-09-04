@@ -581,7 +581,7 @@ export default function UserDashboardPage() {
           <div className="flex items-center gap-3">
             {brandSettings.logoUrl ? (
               <Link href="/" className="relative w-9 h-9 rounded-xl overflow-hidden shadow-md shadow-cyan-600/20 shrink-0 border border-slate-700 bg-slate-900">
-                <Image src={brandSettings.logoUrl} alt="Brand Logo" fill className="object-cover" />
+                <Image src={brandSettings.logoUrl} alt="Brand Logo" fill sizes="36px" className="object-cover" />
               </Link>
             ) : (
               <Link href="/" className="w-9 h-9 rounded-xl bg-cyan-600 flex items-center justify-center font-black text-xs text-white shadow-md shadow-cyan-600/30">

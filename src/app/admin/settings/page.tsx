@@ -225,7 +225,7 @@ export default function SystemSettingsPage() {
                 <div className="pt-2 flex items-center gap-3">
                   <span className="text-[11px] text-slate-500">Live Preview:</span>
                   <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-slate-700 bg-slate-900">
-                    <Image src={logoUrl} alt="Logo Preview" fill className="object-cover" />
+                    <Image src={logoUrl} alt="Logo Preview" fill sizes="48px" className="object-cover" />
                   </div>
                 </div>
               )}
