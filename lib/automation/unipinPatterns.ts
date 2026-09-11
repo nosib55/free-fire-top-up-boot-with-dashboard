@@ -77,19 +77,13 @@ export function detectUnipinDenomination(voucherText: string): DetectedVoucherIn
   if (!voucherText) return null;
   const patterns = getUnipinPatterns();
 
+  // First try full regex match
   for (const [amountKey, regexes] of Object.entries(patterns)) {
     for (const regex of regexes) {
       const match = voucherText.match(regex);
       if (match) {
         const mappedValue = UNIPIN_DIAMOND_MAP[amountKey];
-        let diamondLabel = 'Unknown Package';
-
-        if (typeof mappedValue === 'number') {
-          diamondLabel = `${mappedValue} Diamonds`;
-        } else if (typeof mappedValue === 'string') {
-          diamondLabel = mappedValue;
-        }
-
+        const diamondLabel = typeof mappedValue === 'number' ? `${mappedValue} Diamonds` : String(mappedValue);
         const diamonds = typeof mappedValue === 'number' ? mappedValue : (parseInt(mappedValue, 10) || 0);
 
         return {
@@ -100,6 +94,46 @@ export function detectUnipinDenomination(voucherText: string): DetectedVoucherIn
           diamonds,
         };
       }
+    }
+  }
+
+  // Fallback: match by Serial Prefix (e.g., UPBD-N-S, BDMB-Q-S for Weekly)
+  const SERIAL_PREFIX_MAP: Record<string, string> = {
+    'BDMB-T-S': '20',
+    'UPBD-Q-S': '20',
+    'BDMB-U-S': '36',
+    'UPBD-R-S': '36',
+    'BDMB-J-S': '80',
+    'UPBD-G-S': '80',
+    'BDMB-I-S': '160',
+    'UPBD-F-S': '160',
+    'BDMB-Q-S': '161',
+    'UPBD-N-S': '161',
+    'BDMB-K-S': '405',
+    'UPBD-H-S': '405',
+    'BDMB-S-S': '800',
+    'UPBD-P-S': '800',
+    'BDMB-L-S': '810',
+    'UPBD-I-S': '810',
+    'BDMB-M-S': '1625',
+    'UPBD-J-S': '1625',
+    'UPBD-7-S': '2000',
+  };
+
+  const upper = voucherText.toUpperCase();
+  for (const [prefix, amountKey] of Object.entries(SERIAL_PREFIX_MAP)) {
+    if (upper.includes(prefix)) {
+      const mappedValue = UNIPIN_DIAMOND_MAP[amountKey];
+      const diamondLabel = typeof mappedValue === 'number' ? `${mappedValue} Diamonds` : String(mappedValue);
+      const diamonds = typeof mappedValue === 'number' ? mappedValue : (parseInt(mappedValue, 10) || 0);
+
+      return {
+        code: amountKey,
+        matchedPattern: prefix,
+        diamondLabel,
+        rawAmountKey: amountKey,
+        diamonds,
+      };
     }
   }
 

@@ -184,6 +184,32 @@ export default function UserDashboardPage() {
     setGarenaModalOpen(true);
   }
 
+  // Parse cookie input — supports both JSON array format and plain string format
+  function parseCookieInput(raw: string): string {
+    const trimmed = raw.trim();
+    // Try JSON array format (browser export)
+    if (trimmed.startsWith('[')) {
+      try {
+        const arr = JSON.parse(trimmed);
+        if (Array.isArray(arr)) {
+          return arr
+            .filter((c: any) => c.name && c.value)
+            .map((c: any) => `${c.name}=${c.value}`)
+            .join('; ');
+        }
+      } catch {}
+    }
+    // Try single JSON object
+    if (trimmed.startsWith('{')) {
+      try {
+        const obj = JSON.parse(trimmed);
+        if (obj.name && obj.value) return `${obj.name}=${obj.value}`;
+      } catch {}
+    }
+    // Already in string format
+    return trimmed;
+  }
+
   async function handleSaveGarenaAccount(e: React.FormEvent) {
     e.preventDefault();
     if (!garenaUsername.trim()) {
@@ -200,7 +226,7 @@ export default function UserDashboardPage() {
         password: garenaPassword,
         accountNickname: garenaNickname.trim() || `Garena Account (${garenaUsername.trim()})`,
         region: garenaRegion,
-        authCookie: garenaAuthCookie.trim(),
+        authCookie: parseCookieInput(garenaAuthCookie),
         isPrimary: garenaIsPrimary,
         notes: garenaNotes.trim(),
       };
@@ -1637,15 +1663,30 @@ export default function UserDashboardPage() {
 
                     <div>
                       <label className="block text-slate-300 font-bold mb-1">
-                        Auth Session Cookie <span className="text-slate-500 font-normal">(Recommended to bypass captcha)</span>
+                        Auth Session Cookie
+                        <span className="text-slate-500 font-normal ml-1">(Optional — paste browser cookie string or JSON)</span>
                       </label>
                       <textarea
-                        rows={2}
+                        rows={4}
                         value={garenaAuthCookie}
-                        onChange={(e) => setGarenaAuthCookie(e.target.value)}
-                        placeholder="sso_key=...; session_key=..."
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          // Auto-detect and parse JSON on paste
+                          if (val.startsWith('[') || val.startsWith('{')) {
+                            try {
+                              const parsed = parseCookieInput(val);
+                              if (parsed !== val) {
+                                setGarenaAuthCookie(parsed);
+                                return;
+                              }
+                            } catch {}
+                          }
+                          setGarenaAuthCookie(e.target.value);
+                        }}
+                        placeholder={'Paste cookie string: session_key=abc; language=id\nOR paste JSON array from browser DevTools:\n[{"name":"session_key","value":"abc",...}]'}
                         className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono text-[11px]"
                       />
+                      <p className="text-xs text-amber-400 mt-1">💡 Browser DevTools → Application → Cookies → Right-click → Copy all → Paste here as JSON</p>
                     </div>
 
                     <div>

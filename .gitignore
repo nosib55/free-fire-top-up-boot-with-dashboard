@@ -40,3 +40,7 @@ public/debug/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# scratch & local debug
+scratch/
+

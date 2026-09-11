@@ -21,7 +21,7 @@ export async function syncAllPlatformBalances(): Promise<SyncBalanceSummary> {
   // 1. Fetch UniPin & Garena balances in parallel
   const [unipinRes, garenaRes] = await Promise.all([
     fetchUniPinWalletBalance().catch(() => ({ success: false, balance: 14500, currency: 'UC', message: '' })),
-    fetchGarenaShellsBalance().catch(() => ({ success: false, balance: 2400, message: '' })),
+    fetchGarenaShellsBalance().catch(() => ({ success: false, balance: 0, message: '' })),
   ]);
 
   const unipinBalance = unipinRes.balance;

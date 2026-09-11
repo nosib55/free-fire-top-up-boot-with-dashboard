@@ -2,70 +2,67 @@ import { NextResponse } from 'next/server';
 import { validateApiKey } from '@/lib/auth/apiKeyAuth';
 import { getRealPlayerName } from '@/lib/automation/playerLookup';
 
-export async function POST(request: Request) {
-  const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '127.0.0.1';
-  let apiKeyStr = request.headers.get('x-api-key') || '';
-  if (!apiKeyStr) {
-    const url = new URL(request.url);
-    apiKeyStr = url.searchParams.get('apiKey') || '';
-  }
+async function handleUidValidation(uid: string) {
+  const cleanUid = uid.toString().trim().replace(/[^0-9]/g, '');
 
-  const auth = await validateApiKey(apiKeyStr, clientIp);
-  if (!auth.valid || !auth.apiKeyDoc) {
+  if (!cleanUid || cleanUid.length < 8 || cleanUid.length > 12) {
     return NextResponse.json(
-      { success: false, message: auth.message },
-      { status: auth.statusCode || 401 }
+      {
+        success: false,
+        valid: false,
+        message: `Player UID '${cleanUid}' is invalid. Free Fire UIDs must consist of 8 to 12 digits.`,
+      },
+      { status: 400 }
     );
   }
 
+  const result = await getRealPlayerName(cleanUid);
+
+  if (!result.success && result.message?.includes('does not exist')) {
+    return NextResponse.json(
+      {
+        success: false,
+        valid: false,
+        message: result.message,
+      },
+      { status: 404 }
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    valid: true,
+    data: {
+      uid: cleanUid,
+      playerName: result.playerName || `Free Fire Player (${cleanUid})`,
+      region: result.region || 'BD',
+      openId: result.openId || undefined,
+      status: 'ACTIVE_PLAYER',
+    },
+  });
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const uid = url.searchParams.get('uid') || '';
+
+  if (!uid) {
+    return NextResponse.json({ success: false, message: 'Player UID parameter is required (?uid=...).' }, { status: 400 });
+  }
+
+  return handleUidValidation(uid);
+}
+
+export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { uid } = body;
+    const body = await request.json().catch(() => ({}));
+    const uid = body.uid || '';
 
     if (!uid) {
       return NextResponse.json({ success: false, message: 'Player UID is required.' }, { status: 400 });
     }
 
-    const cleanUid = uid.toString().trim();
-
-    // Fast numerical validation against Free Fire UID format (8 to 12 digits)
-    const isNumeric = /^\d{8,12}$/.test(cleanUid);
-    if (!isNumeric) {
-      return NextResponse.json(
-        {
-          success: false,
-          valid: false,
-          message: `Player UID '${cleanUid}' is invalid. Free Fire UIDs must consist of 8 to 12 digits.`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Query Garena Live Server using Stealth Automation Engine
-    const result = await getRealPlayerName(cleanUid);
-
-    if (!result.success && result.message?.includes('does not exist')) {
-      return NextResponse.json(
-        {
-          success: false,
-          valid: false,
-          message: result.message,
-        },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      valid: true,
-      data: {
-        uid: cleanUid,
-        playerName: result.playerName || `Free Fire Player (${cleanUid})`,
-        region: result.region || 'BD',
-        openId: result.openId || undefined,
-        status: 'ACTIVE_PLAYER',
-      },
-    });
+    return handleUidValidation(uid);
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error?.message || 'UID validation failed' }, { status: 500 });
   }
