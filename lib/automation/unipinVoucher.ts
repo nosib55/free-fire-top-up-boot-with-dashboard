@@ -1,6 +1,6 @@
 // lib/automation/unipinVoucher.ts
 import { detectUnipinDenomination } from './unipinPatterns';
-import { getBrowser, setupPageProxy } from './browserManager';
+import { getBrowser, setupPageProxy, rotateBrowser } from './browserManager';
 import { handleDataDomeSlider, CAPSOLVER_SUPPORTED_UA } from './captchaSolver';
 import { StepProfiler } from './profiler';
 import { topupQueue } from './queueManager';
@@ -117,9 +117,21 @@ async function executeTopup({
 
   try {
     await page.setUserAgent(CAPSOLVER_SUPPORTED_UA);
-    await page.setViewport({ width: 1280, height: 900 });
+    await page.setViewport({ width: 1280, height: 1000 });
 
     const targetDenom = diamondLabel.replace(/ Diamonds?$/i, '').trim();
+
+    // Redirect window.open to avoid popup suppression
+    await page.evaluateOnNewDocument(() => {
+      const origOpen = window.open;
+      window.open = function (url?: string | URL) {
+        if (url) {
+          window.location.href = typeof url === 'string' ? url : url.toString();
+          return window;
+        }
+        return origOpen ? origOpen.apply(this, arguments as any) : null;
+      };
+    });
 
     // ── 1. Garena Shop — Set BD Cookie & Navigate ──
     await page.setCookie({ name: 'region', value: 'BD', domain: '.garena.my' });
@@ -131,98 +143,148 @@ async function executeTopup({
     });
     profiler.mark('Garena DOM loaded');
 
-    // ── 2. Type Player ID and Click Login ──
-    await page.waitForSelector('input', { timeout: 12000 });
-    const uidInput = await page.$('input');
-    if (uidInput) {
-      await uidInput.click({ count: 3 }).catch(() => {});
-      await uidInput.type(uid, { delay: 35 });
-    }
+    const submitPlayerIdLogin = async () => {
+      const inputSelector = 'input[placeholder*="player ID" i], input[type="text"], input[type="number"], input';
+      await page.waitForSelector(inputSelector, { timeout: 12000 }).catch(() => {});
 
-    await new Promise((r) => setTimeout(r, 400));
-
-    await page.evaluate(() => {
-      const btns = Array.from(document.querySelectorAll('button'));
-      for (const b of btns) {
-        if ((b.innerText || '').trim() === 'Login') {
-          b.click();
-          return;
-        }
+      const inputEl = await page.$(inputSelector);
+      if (inputEl) {
+        await inputEl.click();
+        await page.keyboard.down('Control');
+        await page.keyboard.press('KeyA');
+        await page.keyboard.up('Control');
+        await page.keyboard.press('Backspace');
+        await new Promise((r) => setTimeout(r, 100));
+        await inputEl.type(uid, { delay: 40 });
+      } else {
+        await page.evaluate((targetUid) => {
+          const inp = document.querySelector('input') as HTMLInputElement;
+          if (inp) {
+            inp.value = targetUid;
+            inp.dispatchEvent(new Event('input', { bubbles: true }));
+            inp.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }, uid).catch(() => {});
       }
-    });
 
+      await new Promise((r) => setTimeout(r, 400));
+
+      // Click the Login button
+      await page.evaluate(() => {
+        const btns = Array.from(document.querySelectorAll('button, div[role="button"]'));
+        for (const b of btns) {
+          const t = ((b as HTMLElement).innerText || b.textContent || '').trim();
+          if (t === 'Login') {
+            (b as HTMLElement).click();
+            break;
+          }
+        }
+      });
+    };
+
+    await submitPlayerIdLogin();
     profiler.mark('UID entered & Login button clicked');
 
-    // Solve DataDome Slider if present on login
-    const solved = await handleDataDomeSlider(page);
-    if (solved) {
-      profiler.mark('DataDome challenge solved via CapSolver');
-      // Reload and login cleanly with verified cookie
-      await page.goto('https://shop.garena.my/app/100067/idlogin', { waitUntil: 'domcontentloaded', timeout: 20000 });
-      await page.waitForSelector('input', { timeout: 10000 });
-      const inp = await page.$('input');
-      if (inp) {
-        await inp.click({ count: 3 }).catch(() => {});
-        await inp.type(uid, { delay: 25 });
-        await new Promise((r) => setTimeout(r, 300));
-        await page.evaluate(() => {
-          const btns = Array.from(document.querySelectorAll('button'));
-          for (const b of btns) {
-            if ((b.innerText || '').trim() === 'Login') b.click();
-          }
-        });
+    // Wait for authentication response or DataDome challenge
+    let loginSuccess = false;
+    const loginWaitStart = Date.now();
+    let dataDomeSolvedCount = 0;
+
+    while (Date.now() - loginWaitStart < 35000) {
+      const pageText = await page.evaluate(() => document.body.innerText || '');
+      
+      // Check if logged in
+      if (pageText.includes('Username:') || pageText.includes('Log out') || pageText.includes('Logout')) {
+        loginSuccess = true;
+        break;
+      }
+
+      // Check for UID validation errors
+      if (
+        pageText.includes('does not exist') ||
+        pageText.includes('Player ID does not exist') ||
+        pageText.includes('Invalid Player ID')
+      ) {
+        console.error(`[UniPin Worker] ❌ Player UID ${uid} does not exist on Garena.`);
+        profiler.end(false, 'INVALID_UID');
+        return {
+          success: false,
+          errorReason: 'INVALID_UID',
+          message: `Invalid Player ID: Free Fire UID '${uid}' does not exist.`,
+          voucherType,
+          playerName,
+        };
+      }
+
+      if (pageText.includes('Only For BD Region') || pageText.includes('Only for BD')) {
+        console.error(`[UniPin Worker] ❌ Player UID ${uid} is outside BD Region.`);
+        profiler.end(false, 'ONLY_FOR_BD_REGION');
+        return {
+          success: false,
+          errorReason: 'ONLY_FOR_BD_REGION',
+          message: 'Only For BD Region! Free Fire account is not registered in Bangladesh.',
+          voucherType,
+          playerName,
+        };
+      }
+
+      // Check if DataDome challenge appeared
+      const frames = page.frames();
+      const hasDataDome = frames.some((f) => {
+        try {
+          const u = f.url();
+          return u.includes('captcha-delivery.com') || u.includes('geo.captcha');
+        } catch {
+          return false;
+        }
+      });
+
+      if (hasDataDome && dataDomeSolvedCount < 1) {
+        dataDomeSolvedCount++;
+        profiler.mark('DataDome challenge detected on login');
+        const solved = await handleDataDomeSlider(page);
+        if (solved) {
+          profiler.mark('DataDome challenge solved via CapSolver');
+          await new Promise((r) => setTimeout(r, 1000));
+          await page.goto('https://shop.garena.my/app/100067/idlogin', { waitUntil: 'domcontentloaded' });
+          await submitPlayerIdLogin();
+          await new Promise((r) => setTimeout(r, 3500));
+        } else {
+          console.error('[UniPin Worker] ❌ DataDome challenge could not be solved. Rotating proxy...');
+          profiler.end(false, 'DATADOME_BLOCKED');
+          try { await rotateBrowser(); } catch {}
+          return {
+            success: false,
+            errorReason: 'WORKER_ERROR',
+            message: 'Network security verification required. Please retry.',
+            voucherType,
+            playerName,
+          };
+        }
+      }
+
+      await new Promise((r) => setTimeout(r, 600));
+    }
+
+    if (!loginSuccess) {
+      // Re-check text in case it appeared
+      const finalText = await page.evaluate(() => document.body.innerText || '');
+      if (!finalText.includes('Username:') && !finalText.includes('Log out') && !finalText.includes('Logout')) {
+        await saveDebugScreenshot(page, 'login_not_authenticated');
+        console.error(`[UniPin Worker] ❌ Garena login failed to authenticate UID ${uid}. Rotating proxy...`);
+        profiler.end(false, 'LOGIN_FAILED');
+        try { await rotateBrowser(); } catch {}
+        return {
+          success: false,
+          errorReason: 'WORKER_ERROR',
+          message: 'Garena authentication timeout. Please retry.',
+          voucherType,
+          playerName,
+        };
       }
     }
 
-    // Wait for authentication response or packages to load
-    await page.waitForFunction(
-      () => {
-        const text = document.body.innerText || '';
-        return (
-          text.includes('Username:') ||
-          text.includes('Log out') ||
-          text.includes('Logout') ||
-          text.includes('Weekly Membership') ||
-          text.includes('Diamond') ||
-          text.includes('does not exist') ||
-          text.includes('Invalid Player ID') ||
-          text.includes('Only For BD Region')
-        );
-      },
-      { timeout: 15000 }
-    ).catch(() => {});
-
     profiler.mark('Login authentication response received');
-
-    // Check for UID errors
-    const earlyPageText = await page.evaluate(() => document.body.innerText || '');
-    if (
-      earlyPageText.includes('does not exist') ||
-      earlyPageText.includes('Player ID does not exist') ||
-      earlyPageText.includes('Invalid Player ID')
-    ) {
-      console.error(`[UniPin Worker] ❌ Player UID ${uid} does not exist on Garena.`);
-      profiler.end(false, 'INVALID_UID');
-      return {
-        success: false,
-        errorReason: 'INVALID_UID',
-        message: `Invalid Player ID: Free Fire UID '${uid}' does not exist.`,
-        voucherType,
-        playerName,
-      };
-    }
-
-    if (earlyPageText.includes('Only For BD Region') || earlyPageText.includes('Only for BD')) {
-      console.error(`[UniPin Worker] ❌ Player UID ${uid} is outside BD Region.`);
-      profiler.end(false, 'ONLY_FOR_BD_REGION');
-      return {
-        success: false,
-        errorReason: 'ONLY_FOR_BD_REGION',
-        message: 'Only For BD Region! Free Fire account is not registered in Bangladesh.',
-        voucherType,
-        playerName,
-      };
-    }
 
     // Extract in-game player name
     const resolvedPlayerName = await page.evaluate(() => {
@@ -241,78 +303,202 @@ async function executeTopup({
     profiler.mark(`Player verified (${playerName})`);
 
     // ── 3. Select Diamond / Membership Package ──
-    await page.evaluate((denom) => {
-      const els = Array.from(document.querySelectorAll('div, span, button, li, p'));
-      for (const el of els) {
-        const txt = ((el as HTMLElement).innerText || el.textContent || '').trim();
-        if (
-          txt === `${denom} Diamond` ||
-          txt === `${denom} Diamonds` ||
-          txt === denom ||
-          (denom.toLowerCase().includes('weekly') && (txt === 'Weekly Membership' || txt.startsWith('Weekly Membership'))) ||
-          (denom.toLowerCase().includes('monthly') && (txt === 'Monthly Membership' || txt.startsWith('Monthly Membership')))
-        ) {
-          let cur: HTMLElement | null = el as HTMLElement;
-          while (cur && cur.tagName !== 'BODY') {
-            if (cur.className && (cur.className.includes('border') || cur.className.includes('rounded') || cur.className.includes('justify-between') || cur.className.includes('gap-4'))) {
-              cur.click();
-              return;
+    profiler.mark(`Selecting package (${diamondLabel})`);
+
+    // Robust package locator and center click
+    const selectPackage = async (denom: string): Promise<boolean> => {
+      try {
+        const box = await page.evaluate((d) => {
+          const dl = d.toLowerCase();
+          const allDivs = Array.from(document.querySelectorAll('li, div, button, a, span'));
+          for (const el of allDivs) {
+            const t = ((el as HTMLElement).innerText || el.textContent || '').trim().toLowerCase();
+            const isTarget = dl.includes('weekly')
+              ? (/weekly\s*membership/i.test(t) && !t.includes('monthly') && t.length < 50)
+              : dl.includes('monthly')
+              ? (/monthly\s*membership/i.test(t) && t.length < 50)
+              : ((new RegExp(`\\b${dl}\\b.*diamond`, 'i').test(t) || t.startsWith(dl + ' diamond')) && t.length < 40);
+
+            if (isTarget) {
+              const targetEl = (el.closest('li, div[role="button"], button') || el) as HTMLElement;
+              targetEl.scrollIntoView({ behavior: 'instant', block: 'center' });
+              targetEl.click();
+              const rect = targetEl.getBoundingClientRect();
+              return {
+                x: rect.x + rect.width / 2,
+                y: rect.y + rect.height / 2,
+                width: rect.width,
+                height: rect.height,
+              };
             }
-            cur = cur.parentElement;
           }
-          (el as HTMLElement).click();
-          return;
+          return null;
+        }, denom);
+
+        if (box && box.width > 10 && box.height > 10) {
+          console.log(`[UniPin Worker] Clicking package '${denom}' at (${Math.round(box.x)}, ${Math.round(box.y)})`);
+          await page.mouse.move(box.x, box.y);
+          await new Promise((r) => setTimeout(r, 120));
+          await page.mouse.click(box.x, box.y);
+          await new Promise((r) => setTimeout(r, 600));
+          return true;
         }
+      } catch (err: any) {
+        console.warn(`[UniPin Worker] Warning during package click: ${err?.message}`);
       }
-    }, targetDenom);
+      return false;
+    };
+
+    const packageClicked = await selectPackage(targetDenom);
+    if (!packageClicked) {
+      // Fallback: try clicking directly on element
+      await page.evaluate((denom) => {
+        const dl = denom.toLowerCase();
+        const all = Array.from(document.querySelectorAll('*'));
+        for (const el of all) {
+          const t = (el.textContent || '').trim().toLowerCase();
+          if (
+            (dl.includes('weekly') && t.includes('weekly membership')) ||
+            (dl.includes('monthly') && t.includes('monthly membership')) ||
+            t === `${dl} diamond` ||
+            t === `${dl} diamonds`
+          ) {
+            (el as HTMLElement).click();
+            break;
+          }
+        }
+      }, targetDenom);
+    }
 
     profiler.mark(`Selected package (${targetDenom})`);
-    await new Promise((r) => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, 800));
 
     // ── 4. Click Proceed to Payment under Payment card ──
-    await page.evaluate(() => {
-      const btns = Array.from(document.querySelectorAll('button, a, div[role="button"]'));
-      for (const b of btns) {
-        const txt = ((b as HTMLElement).innerText || '').trim();
-        if (
-          txt.includes('Proceed to Payment') ||
-          txt.includes('Proceed') ||
-          txt.includes('Payment') ||
-          txt === 'Login' ||
-          txt.includes('পেমেন্ট')
-        ) {
-          (b as HTMLElement).click();
-          return;
+    const clickProceed = async (): Promise<boolean> => {
+      try {
+        await page.evaluate(() => {
+          const formsAndLinks = Array.from(document.querySelectorAll('form, a'));
+          for (const el of formsAndLinks) {
+            el.removeAttribute('target');
+          }
+        }).catch(() => {});
+
+        const coords = await page.evaluate(() => {
+          const all = Array.from(document.querySelectorAll('button, a, div[role="button"], input[type="button"], input[type="submit"]'));
+          for (const b of all) {
+            const txt = ((b as HTMLElement).innerText || b.textContent || (b as HTMLInputElement).value || '').trim();
+            if (txt.includes('Proceed to Payment') || txt.includes('Proceed') || txt.includes('পেমেন্ট')) {
+              (b as HTMLElement).scrollIntoView({ behavior: 'instant', block: 'center' });
+              const rect = b.getBoundingClientRect();
+              if (rect.width > 5 && rect.height > 5) {
+                return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+              }
+            }
+          }
+          return null;
+        });
+
+        if (coords) {
+          console.log(`[UniPin Worker] Clicking Proceed to Payment at (${Math.round(coords.x)}, ${Math.round(coords.y)})`);
+          await page.mouse.move(coords.x, coords.y);
+          await new Promise((r) => setTimeout(r, 100));
+          await page.mouse.click(coords.x, coords.y);
         }
+
+        // DOM click fallback
+        await page.evaluate(() => {
+          const btns = Array.from(document.querySelectorAll('button, a, div[role="button"], input[type="button"], input[type="submit"]'));
+          for (const b of btns) {
+            const txt = ((b as HTMLElement).innerText || b.textContent || (b as HTMLInputElement).value || '').trim();
+            if (txt.includes('Proceed to Payment') || txt.includes('Proceed') || txt.includes('পেমেন্ট')) {
+              (b as HTMLElement).click();
+              return true;
+            }
+          }
+          return false;
+        }).catch(() => {});
+
+        return true;
+      } catch {
+        return false;
       }
+    };
+
+    // Prepare popup listener BEFORE clicking Proceed
+    let uniboxPage: Page = page;
+    let gatewayReached = false;
+
+    const popupPromise = new Promise<Page | null>((resolve) => {
+      page.once('popup', (p) => resolve(p as unknown as Page));
+      context.once('targetcreated', async (t) => {
+        if (t.type() === 'page') {
+          try {
+            const p = await t.page();
+            if (p) resolve(p as unknown as Page);
+          } catch {}
+        }
+      });
     });
 
+    await clickProceed();
     profiler.mark('Clicked Proceed to Payment');
 
     // Dynamic wait for UniPin / UniBox tab or redirection
-    let uniboxPage: Page = page;
     const startTabWait = Date.now();
-    while (Date.now() - startTabWait < 12000) {
-      const allPages = (await browser.pages()) as unknown as Page[];
-      const uniboxTab = allPages.find((p) => {
-        try {
-          const url = (p as any).url ? (p as any).url() : '';
-          return url.includes('unipin.com') || url.includes('unibox');
-        } catch {
-          return false;
-        }
-      });
-
-      if (uniboxTab) {
-        uniboxPage = uniboxTab;
-        break;
-      }
+    while (Date.now() - startTabWait < 20000) {
       if (page.url().includes('unipin.com') || page.url().includes('unibox')) {
+        uniboxPage = page;
+        gatewayReached = true;
         break;
       }
-      await new Promise((r) => setTimeout(r, 400));
+
+      const ctxPages = await context.pages();
+      for (const p of ctxPages) {
+        try {
+          const u = p.url();
+          if (u.includes('unipin.com') || u.includes('unibox')) {
+            uniboxPage = p;
+            gatewayReached = true;
+            break;
+          }
+        } catch {}
+      }
+      if (gatewayReached) break;
+
+      const maybePopup = await Promise.race([
+        popupPromise,
+        new Promise<null>((r) => setTimeout(() => r(null), 500)),
+      ]);
+      if (maybePopup) {
+        uniboxPage = maybePopup;
+        gatewayReached = true;
+        break;
+      }
+
+      // If after 4s still not opened, re-verify package selection and click proceed again
+      if (Date.now() - startTabWait > 4000 && !gatewayReached) {
+        await selectPackage(targetDenom);
+        await new Promise((r) => setTimeout(r, 400));
+        await clickProceed();
+      }
+
+      await new Promise((r) => setTimeout(r, 600));
     }
 
+    if (!gatewayReached) {
+      await saveDebugScreenshot(page, 'gateway_not_reached');
+      console.error('[UniPin Worker] ❌ UniPin / UniBox gateway was not reached.');
+      profiler.end(false, 'GATEWAY_TIMEOUT');
+      return {
+        success: false,
+        message: 'UniPin gateway could not be loaded from Garena Shop.',
+        errorReason: 'WORKER_ERROR',
+        voucherType,
+        playerName,
+      };
+    }
+
+    await setupPageProxy(uniboxPage);
     profiler.mark('UniBox gateway loaded');
     await uniboxPage.bringToFront().catch(() => {});
 
@@ -341,45 +527,72 @@ async function executeTopup({
       );
     } catch {}
 
-    await uniboxPage.evaluate((denom) => {
-      const allEls = Array.from(document.querySelectorAll('button, div, span, a, p, li'));
+    const amountBox = await uniboxPage.evaluate((denom) => {
+      const dl = denom.toLowerCase().replace(/\s+/g, ' ').trim();
+      const allEls = Array.from(document.querySelectorAll('a, button, div, span, p, li'));
       for (const el of allEls) {
-        const txt = ((el as HTMLElement).innerText || el.textContent || '').trim();
-        if (
-          txt === `${denom} Diamond` ||
-          txt === `${denom} Diamonds` ||
-          txt === denom ||
-          (denom.toLowerCase().includes('weekly') && (txt.toLowerCase().includes('weekly') || txt === 'Weekly Membership')) ||
-          (denom.toLowerCase().includes('monthly') && (txt.toLowerCase().includes('monthly') || txt === 'Monthly Membership'))
-        ) {
-          const clickable = (el.closest('button, div, a, li') || el) as HTMLElement;
+        const txt = ((el as HTMLElement).innerText || el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        const isMatch = dl.includes('weekly')
+          ? (txt.includes('weekly') && !txt.includes('monthly'))
+          : dl.includes('monthly')
+          ? (txt.includes('monthly') && !txt.includes('weekly'))
+          : (txt.includes(`${dl} diamond`) || txt === dl || txt.startsWith(dl));
+
+        if (isMatch) {
+          const clickable = (el.closest('a, button, div[role="button"]') || el) as HTMLElement;
+          clickable.scrollIntoView({ behavior: 'instant', block: 'center' });
           clickable.click();
-          return;
+          const rect = clickable.getBoundingClientRect();
+          if (rect.width > 5 && rect.height > 5) {
+            return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+          }
         }
       }
+      return null;
     }, targetDenom);
 
-    profiler.mark(`Selected UniBox denomination (${targetDenom})`);
-    await new Promise((r) => setTimeout(r, 1500));
+    if (amountBox) {
+      await uniboxPage.mouse.click(amountBox.x, amountBox.y).catch(() => {});
+    }
 
-    // ── 6. Select Voucher Sub-channel inside UniBox (UP Gift Card / UniPin Voucher) ──
+    profiler.mark(`Selected UniBox denomination (${targetDenom})`);
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // ── 6. Select Voucher Sub-channel inside UniBox (UniPin Voucher) ──
     // Step A: Expand Physical Vouchers accordion
-    await uniboxPage.evaluate(() => {
-      const all = Array.from(document.querySelectorAll('*'));
+    try {
+      await uniboxPage.waitForFunction(
+        () => (document.body.innerText || '').includes('Physical Vouchers'),
+        { timeout: 8000 }
+      );
+    } catch {}
+
+    const pvBox = await uniboxPage.evaluate(() => {
+      const all = Array.from(document.querySelectorAll('div, button, a, p, span'));
       for (const el of all) {
         const txt = ((el as HTMLElement).innerText || el.textContent || '').trim();
         if (txt === 'Physical Vouchers' || txt.includes('Physical Vouchers')) {
-          ((el.closest('div, button, a') || el) as HTMLElement).click();
-          return;
+          const clickable = (el.closest('div, button, a') || el) as HTMLElement;
+          clickable.scrollIntoView({ behavior: 'instant', block: 'center' });
+          clickable.click();
+          const rect = clickable.getBoundingClientRect();
+          if (rect.width > 5 && rect.height > 5) {
+            return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+          }
         }
       }
+      return null;
     });
 
-    await new Promise((r) => setTimeout(r, 800));
+    if (pvBox) {
+      await uniboxPage.mouse.click(pvBox.x, pvBox.y).catch(() => {});
+    }
 
-    // Step B: Click UP Gift Card or UniPin Voucher tile
-    const targetChannelName = isUPBD ? 'UP Gift Card' : 'UniPin Voucher';
-    await uniboxPage.evaluate((channelName) => {
+    await new Promise((r) => setTimeout(r, 1200));
+
+    // Step B: Click UniPin Voucher tile under Physical Vouchers
+    const targetChannelName = 'UniPin Voucher';
+    const uvBox = await uniboxPage.evaluate(() => {
       const all = Array.from(
         document.querySelectorAll(
           '.payment-channel-name, .payment-channel-button, button, a, div[role="button"], li, div'
@@ -387,14 +600,22 @@ async function executeTopup({
       );
       for (const el of all) {
         const txt = ((el as HTMLElement).innerText || el.textContent || '').trim();
-        if (txt === channelName || txt.includes(channelName) || txt.includes('UniPin Voucher')) {
+        if (txt === 'UniPin Voucher' || txt.includes('UniPin Voucher')) {
           const clickable = (el.closest('.payment-channel-button, button, a, li') || el) as HTMLElement;
+          clickable.scrollIntoView({ behavior: 'instant', block: 'center' });
           clickable.click();
-          return true;
+          const rect = clickable.getBoundingClientRect();
+          if (rect.width > 5 && rect.height > 5) {
+            return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+          }
         }
       }
-      return false;
-    }, targetChannelName);
+      return null;
+    });
+
+    if (uvBox) {
+      await uniboxPage.mouse.click(uvBox.x, uvBox.y).catch(() => {});
+    }
 
     profiler.mark(`Selected voucher channel (${targetChannelName})`);
 
@@ -406,24 +627,7 @@ async function executeTopup({
     let formReady = false;
     const searchStartTime = Date.now();
 
-    while (Date.now() - searchStartTime < 12000) {
-      // Re-click denomination if still on Select Amount
-      await uniboxPage.evaluate((denom) => {
-        const allEls = Array.from(document.querySelectorAll('button, div, span, a, p, li'));
-        for (const el of allEls) {
-          const txt = ((el as HTMLElement).innerText || el.textContent || '').trim();
-          if (
-            (denom.toLowerCase().includes('weekly') && txt === 'Weekly Membership') ||
-            (denom.toLowerCase().includes('monthly') && txt === 'Monthly Membership') ||
-            txt === `${denom} Diamond`
-          ) {
-            const clickable = (el.closest('button, div, a, li') || el) as HTMLElement;
-            clickable.click();
-            return;
-          }
-        }
-      }, targetDenom);
-
+    while (Date.now() - searchStartTime < 15000) {
       const frames = uniboxPage.frames();
       for (const f of frames) {
         try {
@@ -571,6 +775,7 @@ async function executeTopup({
   } catch (error: any) {
     console.error('[UniPin Worker] Automation error:', error?.message);
     profiler.end(false, error?.message);
+    try { await rotateBrowser(); } catch {}
     return {
       success: false,
       message: `UniPin automation worker error: ${error?.message || 'Gateway connection issue'}.`,

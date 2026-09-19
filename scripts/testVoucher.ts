@@ -1,18 +1,45 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Parse .env.local without external dotenv dependency
+try {
+  const envPath = path.join(process.cwd(), '.env.local');
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, 'utf8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+        const idx = trimmed.indexOf('=');
+        const key = trimmed.substring(0, idx).trim();
+        const val = trimmed.substring(idx + 1).trim();
+        if (!process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    }
+  }
+} catch (e) {
+  console.warn('Could not load .env.local:', e);
+}
+
+// Force visible browser (headful mode)
+process.env.HEADLESS = 'false';
+
 import { processUniPinVoucher } from '../lib/automation/unipinVoucher';
 
 async function run() {
   const start = Date.now();
-  console.log('⏱️  Test started...');
-  console.log('UID: 8027150707');
-  console.log('Serial: BDMB-T-S-02567879');
-  console.log('PIN: 3592-5122-5431-2552');
+  console.log('⏱️  Test started with HEADLESS=false...');
+  console.log('UID: 6683201668');
+  console.log('Serial: UPBD-N-S-16708072');
+  console.log('PIN: 1165-3614-5643-3263');
   console.log('─────────────────────────────────');
 
   const result = await processUniPinVoucher({
-    uid: '8027150707',
-    voucherCode: 'BDMB-T-S-02567879 3592-5122-5431-2552',
-    serial: 'BDMB-T-S-02567879',
-    pin: '3592512254312552',
+    uid: '6683201668',
+    voucherCode: 'UPBD-N-S-16708072 1165-3614-5643-3263',
+    serial: 'UPBD-N-S-16708072',
+    pin: '1165361456433263',
   });
 
   const elapsed = ((Date.now() - start) / 1000).toFixed(2);
@@ -22,7 +49,7 @@ async function run() {
   process.exit(0);
 }
 
-run().catch(err => {
+run().catch((err) => {
   console.error('Error:', err);
   process.exit(1);
 });

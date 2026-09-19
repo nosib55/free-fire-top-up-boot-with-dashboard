@@ -2,6 +2,7 @@
 import { Browser, BrowserContext, Page } from 'puppeteer';
 import puppeteerExtra from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { STEALTH_SCRIPT, STEALTH_USER_AGENT, STEALTH_CH_UA_HEADERS } from './stealthPatches';
 
 puppeteerExtra.use(StealthPlugin());
 
@@ -9,11 +10,30 @@ let globalBrowser: Browser | null = null;
 let browserLaunchPromise: Promise<Browser> | null = null;
 let idleTimer: NodeJS.Timeout | null = null;
 
-export function getProxyConfig(): { server: string; username?: string; password?: string } | null {
-  const proxyUrlStr = process.env.RESIDENTIAL_PROXY_URL || '';
-  if (!proxyUrlStr) return null;
+let proxyIndex = 0;
+let currentBrowserProxy: { server: string; username?: string; password?: string } | null = null;
+
+export function getNextProxyConfig(): { server: string; username?: string; password?: string } | null {
+  const poolStr = process.env.PROXY_POOL || '';
+  const fallbackStr = process.env.RESIDENTIAL_PROXY_URL || '';
+
+  const pool = poolStr
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  let selectedUrl = '';
+  if (pool.length > 0) {
+    selectedUrl = pool[proxyIndex % pool.length];
+    proxyIndex++;
+  } else if (fallbackStr) {
+    selectedUrl = fallbackStr;
+  }
+
+  if (!selectedUrl) return null;
+
   try {
-    const parsed = new URL(proxyUrlStr);
+    const parsed = new URL(selectedUrl);
     const server = `${parsed.protocol}//${parsed.hostname}:${parsed.port}`;
     return {
       server,
@@ -25,8 +45,12 @@ export function getProxyConfig(): { server: string; username?: string; password?
   }
 }
 
+export function getProxyConfig(): { server: string; username?: string; password?: string } | null {
+  return currentBrowserProxy || getNextProxyConfig();
+}
+
 export async function setupPageProxy(page: Page): Promise<void> {
-  const proxy = getProxyConfig();
+  const proxy = currentBrowserProxy || getProxyConfig();
   if (proxy && proxy.username && proxy.password) {
     try {
       await page.authenticate({
@@ -42,24 +66,21 @@ const BROWSER_ARGS = [
   '--disable-setuid-sandbox',
   '--disable-dev-shm-usage',
   '--disable-blink-features=AutomationControlled',
-  '--disable-accelerated-2d-canvas',
   '--disable-gpu',
-  '--no-zygote',
   '--no-first-run',
-  '--disable-background-networking',
-  '--disable-background-timer-throttling',
-  '--disable-backgrounding-occluded-windows',
-  '--disable-breakpad',
-  '--disable-component-extensions-with-background-pages',
-  '--disable-default-apps',
-  '--disable-hang-monitor',
   '--disable-notifications',
-  '--disable-renderer-backgrounding',
-  '--disable-sync',
-  '--enable-tcp-fast-open',
   '--ignore-certificate-errors',
-  '--window-size=1280,900',
-  '--js-flags=--max-old-space-size=256',
+  '--window-size=1920,1080',
+  '--lang=en-US,en',
+  // Additional DataDome bypass args
+  '--disable-infobars',
+  '--disable-extensions-except=',
+  '--disable-default-apps',
+  '--no-default-browser-check',
+  '--disable-background-networking',
+  '--disable-popup-blocking',
+  '--metrics-recording-only',
+  '--mute-audio',
 ];
 
 function resetIdleTimer(): void {
@@ -101,15 +122,18 @@ export async function getBrowser(): Promise<Browser> {
         (process.platform === 'linux' ? '/usr/bin/google-chrome' : undefined);
 
       const args = [...BROWSER_ARGS];
-      const proxy = getProxyConfig();
+      const proxy = getNextProxyConfig();
+      currentBrowserProxy = proxy;
       if (proxy) {
         console.log(`[BrowserManager] Routing through residential proxy: ${proxy.server}`);
         args.push(`--proxy-server=${proxy.server}`);
       }
 
-      console.log(`[BrowserManager] Launching optimized Chromium (executable: ${executablePath || 'default'})...`);
+      const isHeadless = process.env.HEADLESS !== 'false';
+
+      console.log(`[BrowserManager] Launching hardened Chromium (UA: Chrome/133) (executable: ${executablePath || 'default'})...`);
       const browser = (await puppeteerExtra.launch({
-        headless: true,
+        headless: isHeadless,
         executablePath,
         args,
       })) as unknown as Browser;
@@ -129,6 +153,7 @@ export async function getBrowser(): Promise<Browser> {
         console.warn('[BrowserManager] Browser disconnected. Will recreate on next request.');
         globalBrowser = null;
         browserLaunchPromise = null;
+        currentBrowserProxy = null;
       });
 
       globalBrowser = browser;
@@ -137,6 +162,7 @@ export async function getBrowser(): Promise<Browser> {
     } catch (err) {
       globalBrowser = null;
       browserLaunchPromise = null;
+      currentBrowserProxy = null;
       throw err;
     } finally {
       browserLaunchPromise = null;
@@ -146,9 +172,51 @@ export async function getBrowser(): Promise<Browser> {
   return browserLaunchPromise;
 }
 
+export async function closeSharedBrowser(): Promise<void> {
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = null;
+  }
+  if (globalBrowser) {
+    try {
+      if (globalBrowser.connected) {
+        await globalBrowser.close();
+      }
+    } catch {}
+    globalBrowser = null;
+  }
+  currentBrowserProxy = null;
+}
+
+export async function rotateBrowser(): Promise<void> {
+  console.log('[BrowserManager] Rotating browser to switch proxy IP...');
+  await closeSharedBrowser();
+}
+
 /**
- * Executes a task inside an isolated BrowserContext with C++ level CDP asset blocking.
+ * Applies advanced stealth patches + Chrome 133 headers to a page.
+ * Call this on every new page before any navigation.
+ */
+export async function applyStealthToPage(
+  page: Page,
+  options: { userAgent?: string } = {}
+): Promise<void> {
+  // Inject advanced fingerprint patches before any JS runs on the page
+  await page.evaluateOnNewDocument(STEALTH_SCRIPT);
+
+  await page.setViewport({ width: 1920, height: 1080 });
+  await page.setUserAgent(options.userAgent || STEALTH_USER_AGENT);
+
+  // Chrome 133 client hints + language headers — must match UA version
+  await page.setExtraHTTPHeaders({
+    ...STEALTH_CH_UA_HEADERS,
+  });
+}
+
+/**
+ * Executes a task inside an isolated BrowserContext.
  * Context and Page are closed automatically after completion, releasing memory.
+ * Advanced stealth patches are automatically applied to each page.
  */
 export async function withBrowserPage<T>(
   task: (page: Page) => Promise<T>,
@@ -161,29 +229,7 @@ export async function withBrowserPage<T>(
 
   try {
     await setupPageProxy(page);
-    await page.setViewport({ width: 1280, height: 720 });
-    await page.setUserAgent(
-      options.userAgent ||
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-    );
-
-    // ZERO-OVERHEAD C++ level URL Blocking (5x faster than JS setRequestInterception)
-    if (options.blockAssets !== false) {
-      try {
-        const client = await page.target().createCDPSession();
-        await client.send('Network.enable');
-        await client.send('Network.setBlockedURLs', {
-          urls: [
-            '*.png', '*.jpg', '*.jpeg', '*.gif', '*.webp', '*.svg',
-            '*.woff', '*.woff2', '*.ttf', '*.otf',
-            '*.mp4', '*.mp3',
-            '*google-analytics.com*', '*googletagmanager.com*', '*facebook.net*',
-          ],
-        });
-      } catch (cdpErr) {
-        console.warn('[BrowserManager] CDP Network blocking notice:', cdpErr);
-      }
-    }
+    await applyStealthToPage(page, { userAgent: options.userAgent });
 
     return await task(page);
   } finally {

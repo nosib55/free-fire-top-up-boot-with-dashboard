@@ -1,41 +1,25 @@
 import { Queue, Worker, Job } from 'bullmq';
-import Redis from 'ioredis';
+import { createBullMQConnection } from '../redis';
 import { processUniPinVoucher, AutomationResult } from '../automation/unipinVoucher';
 import { processUniPinWallet } from '../automation/unipinWallet';
 import { processGarenaShells } from '../automation/garenaShells';
 
-const REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
-const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379', 10);
-const REDIS_PASSWORD = process.env.REDIS_PASSWORD || undefined;
+const REDIS_HOST = process.env.REDIS_HOST || '';
 
-let redisClient: Redis | null = null;
+let redisClient = createBullMQConnection();
 let isRedisConnected = false;
 
-try {
-  redisClient = new Redis({
-    host: REDIS_HOST,
-    port: REDIS_PORT,
-    password: REDIS_PASSWORD,
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-    lazyConnect: true,
-    retryStrategy: () => null, // Do not spam reconnect if local Redis is offline
-  });
-
+if (redisClient) {
   redisClient.on('connect', () => {
     isRedisConnected = true;
     console.log('[Redis Queue] Connected to Redis server.');
   });
-
   redisClient.on('error', () => {
     isRedisConnected = false;
   });
-
   redisClient.connect().catch(() => {
     isRedisConnected = false;
   });
-} catch (e) {
-  isRedisConnected = false;
 }
 
 export interface TopUpJobData {
