@@ -41,11 +41,28 @@ export async function POST(request: Request) {
     const effectiveCode = voucherCode || `${serial || ''}${pin || ''}`;
     const effectiveItemType = (itemType || diamondPackageId || '').toUpperCase();
 
-    if (targetPipeline === 'UNIPIN_VOUCHER' && !effectiveCode) {
-      return NextResponse.json(
-        { success: false, message: 'Missing required field: voucherCode (or serial & pin) is required for UniPin Voucher pipeline.' },
-        { status: 400 }
-      );
+    if (targetPipeline === 'UNIPIN_VOUCHER') {
+      if (!effectiveCode) {
+        return NextResponse.json(
+          { success: false, message: 'Missing required field: voucherCode (or serial & pin) is required for UniPin Voucher pipeline.' },
+          { status: 400 }
+        );
+      }
+
+      // Instant DB Pre-Check: If voucher is already used or invalid in DB, reject immediately without browser launch
+      const { isVoucherConsumedOrInvalid } = await import('@/lib/services/voucherService');
+      const voucherCheck = await isVoucherConsumedOrInvalid(effectiveCode, serial, pin);
+      if (voucherCheck.isBlocked) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'UniPin Voucher redemption failed: Voucher is invalid, expired, or already used.',
+            errorReason: 'INVALID_VOUCHER',
+            quotaDeducted: false,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // 1.5 Validate Garena Shells packages & Level Up requirements
@@ -100,6 +117,20 @@ export async function POST(request: Request) {
     if (executionResult.success) {
       // Deduct 1 API hit
       await deductQuotaOnSuccess(apiKeyDoc._id.toString());
+
+      if (targetPipeline === 'UNIPIN_VOUCHER') {
+        const { recordVoucherOutcome } = await import('@/lib/services/voucherService');
+        await recordVoucherOutcome({
+          voucherCode: effectiveCode,
+          serial,
+          pin,
+          uid,
+          status: 'USED',
+          reason: 'Redeemed successfully',
+          orderId: executionResult.orderId,
+          apiKey: apiKeyDoc.key,
+        });
+      }
 
       await ApiLog.create({
         apiKey: apiKeyDoc.key,
@@ -181,6 +212,19 @@ export async function POST(request: Request) {
 
     // 4. Failure handling: CONSUMED_VOUCHER & ONLY_FOR_BD_REGION
     if (executionResult.errorReason === 'CONSUMED_VOUCHER') {
+      if (targetPipeline === 'UNIPIN_VOUCHER') {
+        const { recordVoucherOutcome } = await import('@/lib/services/voucherService');
+        await recordVoucherOutcome({
+          voucherCode: effectiveCode,
+          serial,
+          pin,
+          uid,
+          status: 'USED',
+          reason: executionResult.message || 'Already consumed voucher',
+          apiKey: apiKeyDoc.key,
+        });
+      }
+
       await ApiLog.create({
         apiKey: apiKeyDoc.key,
         userId: apiKeyDoc.ownerId,
@@ -196,8 +240,8 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          errorReason: 'CONSUMED_VOUCHER',
-          message: executionResult.message || 'UniPin Voucher is already used/consumed.',
+          errorReason: 'INVALID_VOUCHER',
+          message: 'UniPin Voucher redemption failed: Voucher is invalid, expired, or already used.',
           quotaDeducted: false,
         },
         { status: 400 }
@@ -255,6 +299,19 @@ export async function POST(request: Request) {
     }
 
     if (executionResult.errorReason === 'INVALID_VOUCHER') {
+      if (targetPipeline === 'UNIPIN_VOUCHER') {
+        const { recordVoucherOutcome } = await import('@/lib/services/voucherService');
+        await recordVoucherOutcome({
+          voucherCode: effectiveCode,
+          serial,
+          pin,
+          uid,
+          status: 'INVALID',
+          reason: executionResult.message || 'Invalid voucher code',
+          apiKey: apiKeyDoc.key,
+        });
+      }
+
       // Invalid Voucher Code: Apply Abuse Defense Rule
       const { penaltyDeducted } = await handleAbuseDefense(apiKeyDoc);
 

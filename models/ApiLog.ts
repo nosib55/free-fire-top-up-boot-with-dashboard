@@ -8,7 +8,7 @@ export interface IApiLog extends Document {
   voucherCode?: string;
   requestData?: Record<string, any>;
   responseData?: Record<string, any>;
-  status: 'SUCCESS' | 'FAILED_INVALID_UID' | 'FAILED_INVALID_VOUCHER' | 'WORKER_ERROR' | 'RATE_LIMITED';
+  status: string;
   latencyMs?: number;
   quotaDeducted: boolean;
   ipAddress?: string;
@@ -28,8 +28,8 @@ const ApiLogSchema = new Schema<IApiLog>(
     responseData: { type: Object, default: {} },
     status: {
       type: String,
-      enum: ['SUCCESS', 'FAILED_INVALID_UID', 'FAILED_INVALID_VOUCHER', 'WORKER_ERROR', 'RATE_LIMITED'],
       required: true,
+      index: true,
     },
     latencyMs: { type: Number, default: 0 },
     quotaDeducted: { type: Boolean, default: false },
@@ -39,4 +39,10 @@ const ApiLogSchema = new Schema<IApiLog>(
   { timestamps: true }
 );
 
-export default mongoose.models.ApiLog || mongoose.model<IApiLog>('ApiLog', ApiLogSchema);
+// Clear cached compiled model if already registered in hot-reload
+if (mongoose.models.ApiLog) {
+  delete mongoose.models.ApiLog;
+}
+
+export default mongoose.model<IApiLog>('ApiLog', ApiLogSchema);
+

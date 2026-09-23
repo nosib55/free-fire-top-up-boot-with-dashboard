@@ -40,6 +40,31 @@ async function saveDebugScreenshot(page: Page, label: string) {
   } catch {}
 }
 
+// Fast resource blocker — blocks images, media, fonts, stylesheets & trackers
+async function enableFastResourceBlocking(p: Page) {
+  try {
+    await p.setRequestInterception(true);
+    p.on('request', (req) => {
+      const url = req.url().toLowerCase();
+      const rType = req.resourceType();
+      if (
+        url.includes('captcha') || url.includes('datadome') ||
+        url.includes('capsolver') || url.includes('idlogin') ||
+        url.includes('api') || rType === 'document' ||
+        rType === 'script' || rType === 'xhr' || rType === 'fetch'
+      ) { req.continue().catch(() => {}); return; }
+      if (['image', 'media', 'font'].includes(rType)) {
+        req.abort().catch(() => {}); return;
+      }
+      if (url.includes('google-analytics') || url.includes('facebook') ||
+          url.includes('doubleclick') || url.includes('hotjar') || url.includes('gtag')) {
+        req.abort().catch(() => {}); return;
+      }
+      req.continue().catch(() => {});
+    });
+  } catch {}
+}
+
 export async function processUniPinVoucher(params: UniPinVoucherParams): Promise<AutomationResult> {
   // Concurrency queue to prevent server resource exhaustion
   return topupQueue.run(() => executeTopup(params));
@@ -107,6 +132,22 @@ async function executeTopup({
     };
   }
 
+  // Database pre-check: immediately reject if voucher is already used or invalid in DB
+  const { isVoucherConsumedOrInvalid, recordVoucherOutcome } = await import('../services/voucherService');
+  const voucherCheck = await isVoucherConsumedOrInvalid(fullText, effectiveSerial, effectivePin);
+  if (voucherCheck.isBlocked) {
+    profiler.mark('Blocked: Voucher already used/invalid in DB');
+    profiler.end(false, 'ALREADY_USED_OR_INVALID');
+    console.warn(`[UniPin Worker] 🚫 Voucher ${effectiveSerial || cleanCode} is already recorded as used/invalid. Rejecting immediately without browser launch.`);
+    return {
+      success: false,
+      message: 'UniPin Voucher redemption failed: Voucher is invalid, expired, or already used.',
+      errorReason: 'INVALID_VOUCHER',
+      voucherType,
+      playerName,
+    };
+  }
+
   // Live Redemption Engine
   const browser = await getBrowser();
   profiler.mark('Browser acquired');
@@ -114,6 +155,7 @@ async function executeTopup({
   const context: BrowserContext = await browser.createBrowserContext();
   const page: Page = await context.newPage();
   await setupPageProxy(page);
+  await enableFastResourceBlocking(page);
 
   try {
     await page.setUserAgent(CAPSOLVER_SUPPORTED_UA);
@@ -154,8 +196,8 @@ async function executeTopup({
         await page.keyboard.press('KeyA');
         await page.keyboard.up('Control');
         await page.keyboard.press('Backspace');
-        await new Promise((r) => setTimeout(r, 100));
-        await inputEl.type(uid, { delay: 40 });
+        await new Promise((r) => setTimeout(r, 50));
+        await inputEl.type(uid, { delay: 5 });
       } else {
         await page.evaluate((targetUid) => {
           const inp = document.querySelector('input') as HTMLInputElement;
@@ -167,7 +209,7 @@ async function executeTopup({
         }, uid).catch(() => {});
       }
 
-      await new Promise((r) => setTimeout(r, 400));
+      await new Promise((r) => setTimeout(r, 150));
 
       // Click the Login button
       await page.evaluate(() => {
@@ -245,10 +287,10 @@ async function executeTopup({
         const solved = await handleDataDomeSlider(page);
         if (solved) {
           profiler.mark('DataDome challenge solved via CapSolver');
-          await new Promise((r) => setTimeout(r, 1000));
+          await new Promise((r) => setTimeout(r, 300));
           await page.goto('https://shop.garena.my/app/100067/idlogin', { waitUntil: 'domcontentloaded' });
           await submitPlayerIdLogin();
-          await new Promise((r) => setTimeout(r, 3500));
+          await new Promise((r) => setTimeout(r, 800));
         } else {
           console.error('[UniPin Worker] ❌ DataDome challenge could not be solved. Rotating proxy...');
           profiler.end(false, 'DATADOME_BLOCKED');
@@ -263,7 +305,7 @@ async function executeTopup({
         }
       }
 
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 250));
     }
 
     if (!loginSuccess) {
@@ -338,9 +380,9 @@ async function executeTopup({
         if (box && box.width > 10 && box.height > 10) {
           console.log(`[UniPin Worker] Clicking package '${denom}' at (${Math.round(box.x)}, ${Math.round(box.y)})`);
           await page.mouse.move(box.x, box.y);
-          await new Promise((r) => setTimeout(r, 120));
+          await new Promise((r) => setTimeout(r, 80));
           await page.mouse.click(box.x, box.y);
-          await new Promise((r) => setTimeout(r, 600));
+          await new Promise((r) => setTimeout(r, 150));
           return true;
         }
       } catch (err: any) {
@@ -371,7 +413,7 @@ async function executeTopup({
     }
 
     profiler.mark(`Selected package (${targetDenom})`);
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 150));
 
     // ── 4. Click Proceed to Payment under Payment card ──
     const clickProceed = async (): Promise<boolean> => {
@@ -478,11 +520,11 @@ async function executeTopup({
       // If after 4s still not opened, re-verify package selection and click proceed again
       if (Date.now() - startTabWait > 4000 && !gatewayReached) {
         await selectPackage(targetDenom);
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 150));
         await clickProceed();
       }
 
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 250));
     }
 
     if (!gatewayReached) {
@@ -506,7 +548,7 @@ async function executeTopup({
     const uniboxSolved = await handleDataDomeSlider(uniboxPage, uniboxPage.url());
     if (uniboxSolved) {
       profiler.mark('DataDome on UniBox solved via CapSolver');
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 500));
     }
 
     // ── 5. If UniBox displays "Select Amount" grid, click target denomination ──
@@ -532,14 +574,24 @@ async function executeTopup({
       const allEls = Array.from(document.querySelectorAll('a, button, div, span, p, li'));
       for (const el of allEls) {
         const txt = ((el as HTMLElement).innerText || el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+        // Ignore large parent containers
+        if (
+          txt.includes('select amount') ||
+          (txt.includes('25') && txt.includes('50') && txt.includes('115')) ||
+          txt.length > 35
+        ) {
+          continue;
+        }
+
         const isMatch = dl.includes('weekly')
           ? (txt.includes('weekly') && !txt.includes('monthly'))
           : dl.includes('monthly')
           ? (txt.includes('monthly') && !txt.includes('weekly'))
-          : (txt.includes(`${dl} diamond`) || txt === dl || txt.startsWith(dl));
+          : (txt === `${dl} diamond` || txt === `${dl} diamonds` || new RegExp(`^${dl}\\s*diamond`, 'i').test(txt));
 
         if (isMatch) {
-          const clickable = (el.closest('a, button, div[role="button"]') || el) as HTMLElement;
+          const clickable = (el.closest('button, a, div[role="button"], li') || el) as HTMLElement;
           clickable.scrollIntoView({ behavior: 'instant', block: 'center' });
           clickable.click();
           const rect = clickable.getBoundingClientRect();
@@ -556,23 +608,37 @@ async function executeTopup({
     }
 
     profiler.mark(`Selected UniBox denomination (${targetDenom})`);
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 600));
 
-    // ── 6. Select Voucher Sub-channel inside UniBox (UniPin Voucher) ──
-    // Step A: Expand Physical Vouchers accordion
+    // ── 6. Select Voucher Sub-channel inside UniBox (UniPin Voucher / UP Gift Card) ──
     try {
       await uniboxPage.waitForFunction(
-        () => (document.body.innerText || '').includes('Physical Vouchers'),
+        () => {
+          const t = document.body.innerText || '';
+          return (
+            t.includes('Physical Vouchers') ||
+            t.includes('UniPin Voucher') ||
+            t.includes('UP Gift Card') ||
+            t.includes('Voucher') ||
+            document.querySelector('input[name="serial"], input#serial, input[placeholder*="Serial"]') !== null
+          );
+        },
         { timeout: 8000 }
       );
     } catch {}
 
+    // Step A: Expand Physical Vouchers / UP Gift Card accordion
     const pvBox = await uniboxPage.evaluate(() => {
-      const all = Array.from(document.querySelectorAll('div, button, a, p, span'));
+      const all = Array.from(document.querySelectorAll('div, button, a, p, span, h3, h4'));
       for (const el of all) {
         const txt = ((el as HTMLElement).innerText || el.textContent || '').trim();
-        if (txt === 'Physical Vouchers' || txt.includes('Physical Vouchers')) {
-          const clickable = (el.closest('div, button, a') || el) as HTMLElement;
+        if (
+          txt === 'Physical Vouchers' ||
+          txt.includes('Physical Vouchers') ||
+          txt === 'UP Gift Card' ||
+          txt.includes('UP Gift Card')
+        ) {
+          const clickable = (el.closest('div[role="button"], button, a, div') || el) as HTMLElement;
           clickable.scrollIntoView({ behavior: 'instant', block: 'center' });
           clickable.click();
           const rect = clickable.getBoundingClientRect();
@@ -588,10 +654,9 @@ async function executeTopup({
       await uniboxPage.mouse.click(pvBox.x, pvBox.y).catch(() => {});
     }
 
-    await new Promise((r) => setTimeout(r, 1200));
+    await new Promise((r) => setTimeout(r, 400));
 
-    // Step B: Click UniPin Voucher tile under Physical Vouchers
-    const targetChannelName = 'UniPin Voucher';
+    // Step B: Click UniPin Voucher / UP Gift Card tile under accordion
     const uvBox = await uniboxPage.evaluate(() => {
       const all = Array.from(
         document.querySelectorAll(
@@ -600,7 +665,12 @@ async function executeTopup({
       );
       for (const el of all) {
         const txt = ((el as HTMLElement).innerText || el.textContent || '').trim();
-        if (txt === 'UniPin Voucher' || txt.includes('UniPin Voucher')) {
+        if (
+          txt === 'UniPin Voucher' ||
+          txt.includes('UniPin Voucher') ||
+          txt === 'UP Gift Card' ||
+          txt.includes('UP Gift Card')
+        ) {
           const clickable = (el.closest('.payment-channel-button, button, a, li') || el) as HTMLElement;
           clickable.scrollIntoView({ behavior: 'instant', block: 'center' });
           clickable.click();
@@ -617,7 +687,7 @@ async function executeTopup({
       await uniboxPage.mouse.click(uvBox.x, uvBox.y).catch(() => {});
     }
 
-    profiler.mark(`Selected voucher channel (${targetChannelName})`);
+    profiler.mark('Selected voucher channel inside UniBox');
 
     // ── 7. Dynamic Wait for Serial & PIN Form across Page and all Frames ──
     const FORM_SELECTOR =
@@ -629,18 +699,15 @@ async function executeTopup({
 
     while (Date.now() - searchStartTime < 15000) {
       const frames = uniboxPage.frames();
-      for (const f of frames) {
-        try {
-          const inp = await f.$(FORM_SELECTOR);
-          if (inp) {
-            targetFrame = f;
-            formReady = true;
-            break;
-          }
-        } catch {}
-      }
-      if (formReady) break;
-      await new Promise((r) => setTimeout(r, 500));
+      // Scan all frames in parallel for speed
+      const results = await Promise.all(
+        frames.map(async (f) => {
+          try { return (await f.$(FORM_SELECTOR)) ? f : null; } catch { return null; }
+        })
+      );
+      const found = results.find(Boolean);
+      if (found) { targetFrame = found; formReady = true; break; }
+      await new Promise((r) => setTimeout(r, 150));
     }
 
     if (!formReady) {
@@ -756,6 +823,17 @@ async function executeTopup({
         reasonCode = 'WORKER_ERROR';
       }
 
+      if (reasonCode === 'CONSUMED_VOUCHER' || reasonCode === 'INVALID_VOUCHER') {
+        await recordVoucherOutcome({
+          voucherCode: cleanCode,
+          serial: effectiveSerial,
+          pin: effectivePin,
+          uid,
+          status: reasonCode === 'CONSUMED_VOUCHER' ? 'USED' : 'INVALID',
+          reason: reasonMsg,
+        });
+      }
+
       console.error(`[UniPin Worker] ❌ ${reasonMsg} (${reasonCode})`);
       profiler.end(false, reasonCode);
       return { success: false, message: reasonMsg, errorReason: reasonCode, voucherType, playerName };
@@ -763,6 +841,17 @@ async function executeTopup({
 
     const orderId = `UP_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
     profiler.end(true, `OrderID: ${orderId}`);
+
+    // Persist successfully redeemed voucher to database
+    await recordVoucherOutcome({
+      voucherCode: cleanCode,
+      serial: effectiveSerial,
+      pin: effectivePin,
+      uid,
+      status: 'USED',
+      reason: 'Redeemed successfully',
+      orderId,
+    });
 
     return {
       success: true,

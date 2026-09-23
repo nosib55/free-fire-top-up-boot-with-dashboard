@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
     // Also check Voucher model if tracked
     let voucherDoc = null;
-    if (primarySerial) {
+    if (primarySerial || cleanUpper) {
       voucherDoc = await Voucher.findOne({
         $or: [
           { code: cleanUpper },
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
     const isConsumed = Boolean(
       previousRedemption ||
-      (voucherDoc && (voucherDoc.status === 'USED' || voucherDoc.status === 'EXPIRED'))
+      (voucherDoc && (voucherDoc.isUsed === true || voucherDoc.status === 'USED' || voucherDoc.status === 'EXPIRED' || voucherDoc.status === 'INVALID'))
     );
 
     let status: 'VALID' | 'CONSUMED' | 'INVALID_FORMAT' = 'VALID';
