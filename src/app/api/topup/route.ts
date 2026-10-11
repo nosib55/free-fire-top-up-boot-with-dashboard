@@ -358,11 +358,11 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        message: 'Top-up worker temporary gateway drop. Your quota has NOT been deducted.',
+        message: executionResult.message || 'Top-up worker temporary gateway drop. Your quota has NOT been deducted.',
         errorReason: 'WORKER_ERROR',
         quotaDeducted: false,
       },
-      { status: 502 }
+      { status: 400 }
     );
   } catch (error: any) {
     return NextResponse.json(

@@ -3,6 +3,7 @@ import dbConnect from '../../utils/db';
 import SystemSetting from '../../models/SystemSetting';
 import { Page } from 'puppeteer';
 import { getProxyConfig } from './browserManager';
+import { getHealthyProxy } from './proxyHealth';
 import {
   getCachedDatadomeCookie,
   setCachedDatadomeCookie,
@@ -177,20 +178,14 @@ export async function solveTurnstile(pageUrl: string, siteKey: string): Promise<
 
 /**
  * Build proxy URL string from current proxy config for CapSolver task payload.
+ * Only returns a proxy URL if the proxy is verified healthy (not 407 expired).
  */
-function buildProxyUrlForCapSolver(): string {
-  const activeProxy = getProxyConfig();
-  let proxyUrl = process.env.RESIDENTIAL_PROXY_URL || '';
-  if (activeProxy) {
-    if (activeProxy.username && activeProxy.password) {
-      const u = encodeURIComponent(activeProxy.username);
-      const p = encodeURIComponent(activeProxy.password);
-      proxyUrl = activeProxy.server.replace('://', `://${u}:${p}@`);
-    } else {
-      proxyUrl = activeProxy.server;
-    }
+async function buildProxyUrlForCapSolver(): Promise<string> {
+  const healthyUrl = await getHealthyProxy().catch(() => null);
+  if (healthyUrl) {
+    return healthyUrl;
   }
-  return proxyUrl;
+  return '';
 }
 
 /**
@@ -249,15 +244,18 @@ async function solveDataDomeViaCapSolver(
   apiKey: string,
   proxyUrl: string
 ): Promise<string | null> {
+  if (!proxyUrl) {
+    console.warn('[DataDome] ⚠️ CapSolver requires a healthy residential proxy to solve DataDome, but proxy pool is expired/dead.');
+    return null;
+  }
+
   const taskPayload: Record<string, any> = {
     type: 'DatadomeSliderTask',
     websiteURL: websiteUrl,
     captchaUrl: captchaUrl,
     userAgent: CAPSOLVER_SUPPORTED_UA,
+    proxy: proxyUrl,
   };
-  if (proxyUrl) {
-    taskPayload.proxy = proxyUrl;
-  }
 
   const res = await fetch('https://api.capsolver.com/createTask', {
     method: 'POST',
@@ -370,7 +368,7 @@ export async function handleDataDomeSlider(
       return false;
     }
 
-    const proxyUrl = buildProxyUrlForCapSolver();
+    const proxyUrl = await buildProxyUrlForCapSolver();
     const rawCookie = await solveDataDomeViaCapSolver(captchaUrl, websiteUrl, apiKey, proxyUrl);
 
     if (!rawCookie) {

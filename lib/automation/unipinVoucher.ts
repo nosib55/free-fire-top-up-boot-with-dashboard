@@ -1,6 +1,6 @@
 // lib/automation/unipinVoucher.ts
 import { detectUnipinDenomination } from './unipinPatterns';
-import { getBrowser, setupPageProxy, rotateBrowser } from './browserManager';
+import { getBrowser, setupPageProxy, rotateBrowser, claimWarmShopPage } from './browserManager';
 import { handleDataDomeSlider, CAPSOLVER_SUPPORTED_UA } from './captchaSolver';
 import { StepProfiler } from './profiler';
 import { topupQueue } from './queueManager';
@@ -148,19 +148,38 @@ async function executeTopup({
     };
   }
 
-  // Live Redemption Engine
-  const browser = await getBrowser();
-  profiler.mark('Browser acquired');
+  // Live Redemption Engine (Uses pre-warmed page for instant 1-2s topup if ready)
+  const warmInstance = await claimWarmShopPage();
+  let context: BrowserContext;
+  let page: Page;
+  let isPreWarmed = false;
 
-  const context: BrowserContext = await browser.createBrowserContext();
-  const page: Page = await context.newPage();
-  await setupPageProxy(page);
-  await enableFastResourceBlocking(page);
-
-  try {
+  if (warmInstance) {
+    context = warmInstance.context;
+    page = warmInstance.page;
+    isPreWarmed = true;
+    profiler.mark('Pre-warmed Garena page acquired (0ms navigation time)');
+    await enableFastResourceBlocking(page);
+  } else {
+    const browser = await getBrowser();
+    profiler.mark('Browser acquired');
+    context = await browser.createBrowserContext();
+    page = await context.newPage();
+    await setupPageProxy(page);
+    await enableFastResourceBlocking(page);
     await page.setUserAgent(CAPSOLVER_SUPPORTED_UA);
     await page.setViewport({ width: 1280, height: 1000 });
+    await page.setCookie({ name: 'region', value: 'BD', domain: '.garena.my' });
 
+    profiler.mark('Navigating to Garena Shop BD');
+    await page.goto('https://shop.garena.my/app/100067/idlogin', {
+      waitUntil: 'domcontentloaded',
+      timeout: 20000,
+    });
+    profiler.mark('Garena DOM loaded');
+  }
+
+  try {
     const targetDenom = diamondLabel.replace(/ Diamonds?$/i, '').trim();
 
     // Redirect window.open to avoid popup suppression
@@ -174,16 +193,6 @@ async function executeTopup({
         return origOpen ? origOpen.apply(this, arguments as any) : null;
       };
     });
-
-    // ── 1. Garena Shop — Set BD Cookie & Navigate ──
-    await page.setCookie({ name: 'region', value: 'BD', domain: '.garena.my' });
-
-    profiler.mark('Navigating to Garena Shop BD');
-    await page.goto('https://shop.garena.my/app/100067/idlogin', {
-      waitUntil: 'domcontentloaded',
-      timeout: 25000,
-    });
-    profiler.mark('Garena DOM loaded');
 
     const submitPlayerIdLogin = async () => {
       const inputSelector = 'input[placeholder*="player ID" i], input[type="text"], input[type="number"], input';

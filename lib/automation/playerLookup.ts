@@ -2,6 +2,7 @@
 import { withBrowserPage } from './browserManager';
 import { handleDataDomeSlider, CAPSOLVER_SUPPORTED_UA } from './captchaSolver';
 import { getRedisClient } from '../redis';
+import { directPlayerLogin } from './directSession';
 
 export interface RealPlayerInfo {
   success: boolean;
@@ -128,7 +129,25 @@ export async function getRealPlayerName(uid: string): Promise<RealPlayerInfo> {
     return cached;
   }
 
-  console.log(`[PlayerLookup] ⚡ Live fetching real-time in-game name for UID: ${cleanUid}...`);
+  // 1. Direct TLS Fast Path (~200ms, no browser launch)
+  try {
+    const directRes = await directPlayerLogin(cleanUid);
+    if (directRes.success && directRes.playerName) {
+      console.log(`[PlayerLookup] ⚡ Direct TLS HIT in ${directRes.latencyMs}ms: ${cleanUid} => "${directRes.playerName}"`);
+      const info: RealPlayerInfo = {
+        success: true,
+        playerName: directRes.playerName,
+        region: directRes.region || 'BD',
+        openId: directRes.openId,
+      };
+      await saveToCache(cleanUid, info);
+      return info;
+    }
+  } catch (err: any) {
+    console.warn('[PlayerLookup] Direct TLS attempt note:', err?.message);
+  }
+
+  console.log(`[PlayerLookup] ⚡ Falling back to optimized browser execution for UID: ${cleanUid}...`);
 
   try {
     const info = await withBrowserPage<RealPlayerInfo>(

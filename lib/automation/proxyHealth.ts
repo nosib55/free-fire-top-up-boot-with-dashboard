@@ -3,7 +3,7 @@
 // Automatically skips dead or datacenter proxies.
 // Health status is cached in Redis for 5 minutes per proxy.
 
-import { checkProxyConnectivity } from './proxyHealthCheck.js';
+import { checkProxyConnectivity } from './proxyHealthCheck';
 import { getRedisClient } from '../redis';
 
 const HEALTH_PREFIX = 'proxy:health:';
@@ -143,10 +143,8 @@ let _rrIndex = 0;
 export async function getHealthyProxy(): Promise<string | null> {
   const healthy = await getHealthyProxies().catch(() => [] as string[]);
   if (healthy.length === 0) {
-    // Fallback to raw pool without health check
-    const poolStr = process.env.PROXY_POOL || process.env.RESIDENTIAL_PROXY_URL || '';
-    const all = poolStr.split(',').map((s) => s.trim()).filter(Boolean);
-    return all.length > 0 ? all[_rrIndex++ % all.length] : null;
+    console.warn('[ProxyHealth] ⚠️ No healthy proxies found in pool. Routing directly without proxy.');
+    return null;
   }
   return healthy[_rrIndex++ % healthy.length];
 }

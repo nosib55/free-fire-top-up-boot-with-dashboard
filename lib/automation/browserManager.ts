@@ -3,6 +3,7 @@ import { Browser, BrowserContext, Page } from 'puppeteer';
 import puppeteerExtra from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { STEALTH_SCRIPT, STEALTH_USER_AGENT, STEALTH_CH_UA_HEADERS } from './stealthPatches';
+import { getHealthyProxy, parseProxyUrl } from './proxyHealth';
 
 puppeteerExtra.use(StealthPlugin());
 
@@ -122,11 +123,14 @@ export async function getBrowser(): Promise<Browser> {
         (process.platform === 'linux' ? '/usr/bin/google-chrome' : undefined);
 
       const args = [...BROWSER_ARGS];
-      const proxy = getNextProxyConfig();
+      const healthyProxyUrl = await getHealthyProxy().catch(() => null);
+      const proxy = healthyProxyUrl ? parseProxyUrl(healthyProxyUrl) : null;
       currentBrowserProxy = proxy;
       if (proxy) {
-        console.log(`[BrowserManager] Routing through residential proxy: ${proxy.server}`);
+        console.log(`[BrowserManager] Routing through healthy proxy: ${proxy.server}`);
         args.push(`--proxy-server=${proxy.server}`);
+      } else {
+        console.log('[BrowserManager] 🚀 Direct connection active (bypassing dead proxy for maximum speed)');
       }
 
       const isHeadless = process.env.HEADLESS !== 'false';
@@ -241,3 +245,48 @@ export async function withBrowserPage<T>(
     } catch {}
   }
 }
+
+/**
+ * Pre-warmed page pool for instant (0ms navigation) order execution.
+ */
+let warmPage: Page | null = null;
+let warmPageContext: BrowserContext | null = null;
+let isWarming = false;
+
+export async function warmupShopPage(): Promise<void> {
+  if (isWarming || (warmPage && !warmPage.isClosed())) return;
+  isWarming = true;
+  try {
+    const browser = await getBrowser();
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    await setupPageProxy(page);
+    await applyStealthToPage(page);
+    await page.setCookie({ name: 'region', value: 'BD', domain: '.garena.my' });
+    await page.goto('https://shop.garena.my/app/100067/idlogin', {
+      waitUntil: 'domcontentloaded',
+      timeout: 15000,
+    });
+    warmPageContext = context;
+    warmPage = page;
+    console.log('[BrowserManager] 🔥 Warm Garena Shop page ready for instant order execution.');
+  } catch (err: any) {
+    console.warn('[BrowserManager] Warmup notice:', err?.message);
+  } finally {
+    isWarming = false;
+  }
+}
+
+export async function claimWarmShopPage(): Promise<{ page: Page; context: BrowserContext } | null> {
+  if (warmPage && !warmPage.isClosed() && warmPageContext) {
+    const p = warmPage;
+    const ctx = warmPageContext;
+    warmPage = null;
+    warmPageContext = null;
+    // Asynchronously replenish warm page for next incoming order
+    setTimeout(() => { warmupShopPage().catch(() => {}); }, 1500);
+    return { page: p, context: ctx };
+  }
+  return null;
+}
+

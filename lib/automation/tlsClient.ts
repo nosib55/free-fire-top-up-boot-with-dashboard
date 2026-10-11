@@ -6,6 +6,7 @@
 
 import { gotScraping, type OptionsOfTextResponseBody } from 'got-scraping';
 import { STEALTH_USER_AGENT, STEALTH_CH_UA_HEADERS } from './stealthPatches';
+import { getHealthyProxy } from './proxyHealth';
 
 export interface TlsRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -69,7 +70,7 @@ export async function tlsFetch(url: string, options: TlsRequestOptions = {}): Pr
     timeoutMs = 20000,
   } = options;
 
-  const proxyUrlResolved = proxyUrl || getEnvProxyUrl();
+  const proxyUrlResolved = proxyUrl !== undefined ? proxyUrl : ((await getHealthyProxy().catch(() => null)) || undefined);
 
   // Build merged headers (stealth headers + caller overrides)
   const mergedHeaders: Record<string, string> = {
