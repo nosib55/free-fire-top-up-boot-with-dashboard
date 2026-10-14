@@ -62,7 +62,7 @@ export default function UserDashboardPage() {
 
   // Playground State
   const [testUid, setTestUid] = useState('');
-  const [testPipeline, setTestPipeline] = useState<'UNIPIN_VOUCHER' | 'GARENA_SHELLS'>('GARENA_SHELLS');
+  const [testPipeline, setTestPipeline] = useState<'UNIPIN_VOUCHER' | 'GARENA_SHELLS'>('UNIPIN_VOUCHER');
   const [testPackageId, setTestPackageId] = useState('WEEKLY_MEMBERSHIP');
   const [testPlayerLevel, setTestPlayerLevel] = useState('');
   const [testVoucherCode, setTestVoucherCode] = useState('');
@@ -570,8 +570,8 @@ export default function UserDashboardPage() {
           uid: testUid,
           pipeline: testPipeline,
           voucherCode: testPipeline === 'UNIPIN_VOUCHER' ? testVoucherCode : undefined,
-          diamondPackageId: testPackageId,
-          itemType: testPackageId,
+          diamondPackageId: testPipeline === 'GARENA_SHELLS' ? testPackageId : undefined,
+          itemType: testPipeline === 'GARENA_SHELLS' ? testPackageId : undefined,
           playerLevel: testPlayerLevel ? Number(testPlayerLevel) : undefined,
         }),
       });

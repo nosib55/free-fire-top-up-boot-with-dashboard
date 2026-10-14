@@ -36,7 +36,7 @@ async function getFromCache(uid: string): Promise<RealPlayerInfo | null> {
   try {
     const redis = getRedisClient();
     if (redis) {
-      if (redis.status !== 'ready') await redis.connect().catch(() => {});
+      if (redis.status !== 'ready') await redis.connect().catch(() => { });
       const cached = await redis.get(`${REDIS_CACHE_PREFIX}${uid}`);
       if (cached) {
         const parsed = JSON.parse(cached) as RealPlayerInfo;
@@ -44,7 +44,7 @@ async function getFromCache(uid: string): Promise<RealPlayerInfo | null> {
         return parsed;
       }
     }
-  } catch {}
+  } catch { }
 
   // 3. Check MongoDB permanent database (Permanent storage)
   try {
@@ -83,10 +83,10 @@ async function saveToCache(uid: string, info: RealPlayerInfo): Promise<void> {
   try {
     const redis = getRedisClient();
     if (redis) {
-      if (redis.status !== 'ready') await redis.connect().catch(() => {});
+      if (redis.status !== 'ready') await redis.connect().catch(() => { });
       await redis.set(`${REDIS_CACHE_PREFIX}${uid}`, JSON.stringify(info), 'EX', REDIS_CACHE_TTL_SEC);
     }
-  } catch {}
+  } catch { }
 
   // 3. Save permanently to MongoDB
   try {
@@ -129,7 +129,46 @@ export async function getRealPlayerName(uid: string): Promise<RealPlayerInfo> {
     return cached;
   }
 
-  // 1. Direct TLS Fast Path (~200ms, no browser launch)
+  // 1. High-Speed Python DataDome API Engine (~1-2s, no browser needed)
+  try {
+    const flexApiUrl = process.env.FLEXBASE_UNIPIN_API_URL || 'http://127.0.0.1:8000';
+    const pyRes = await fetch(`${flexApiUrl}/api/player?uid=${cleanUid}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (pyRes.ok) {
+      const pyData = await pyRes.json();
+      if (pyData.status === 'success' && pyData.nickname) {
+        console.log(`[PlayerLookup] 🐍 Python Fast Lookup HIT: ${cleanUid} => "${pyData.nickname}" (${pyData.region || 'BD'})`);
+        const info: RealPlayerInfo = {
+          success: true,
+          playerName: pyData.nickname,
+          region: pyData.region || 'BD',
+          openId: pyData.open_id || undefined,
+        };
+        await saveToCache(cleanUid, info);
+        return info;
+      }
+      if (
+        pyData.status === 'error' &&
+        (pyData.message?.includes('not exist') ||
+          pyData.message?.includes('invalid') ||
+          pyData.message?.includes('error_player_id'))
+      ) {
+        console.log(`[PlayerLookup] ❌ Player UID ${cleanUid} does not exist according to Garena.`);
+        return {
+          success: false,
+          playerName: '',
+          message: `Free Fire Player UID '${cleanUid}' does not exist on Garena servers.`,
+        };
+      }
+    }
+  } catch (err: any) {
+    console.warn('[PlayerLookup] Python Fast Lookup note:', err?.message);
+  }
+
+  // 2. Direct TLS Fast Path fallback
   try {
     const directRes = await directPlayerLogin(cleanUid);
     if (directRes.success && directRes.playerName) {
@@ -178,7 +217,7 @@ export async function getRealPlayerName(uid: string): Promise<RealPlayerInfo> {
               } else if (data && (data.error === 'error_player_id' || data.error === 'error_user_not_found')) {
                 interceptedError = 'Player ID does not exist';
               }
-            } catch {}
+            } catch { }
           }
         });
 
@@ -190,7 +229,7 @@ export async function getRealPlayerName(uid: string): Promise<RealPlayerInfo> {
         await page.waitForSelector('input', { timeout: 10000 });
         const inputEl = await page.$('input');
         if (inputEl) {
-          await inputEl.click({ count: 3 }).catch(() => {});
+          await inputEl.click({ count: 3 }).catch(() => { });
           await inputEl.type(cleanUid, { delay: 10 });
         }
 
@@ -213,7 +252,7 @@ export async function getRealPlayerName(uid: string): Promise<RealPlayerInfo> {
           await page.waitForSelector('input', { timeout: 8000 });
           const inp = await page.$('input');
           if (inp) {
-            await inp.click({ count: 3 }).catch(() => {});
+            await inp.click({ count: 3 }).catch(() => { });
             await inp.type(cleanUid, { delay: 10 });
             await new Promise((r) => setTimeout(r, 150));
             await page.evaluate(() => {

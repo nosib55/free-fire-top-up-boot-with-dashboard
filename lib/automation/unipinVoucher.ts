@@ -19,6 +19,7 @@ export interface AutomationResult {
   voucherType?: string;
   playerName?: string;
   orderId?: string;
+  rawResponse?: any;
   errorReason?:
     | 'INVALID_UID'
     | 'INVALID_VOUCHER'

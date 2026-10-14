@@ -3,7 +3,14 @@
 // Bypasses browser launch by using got-scraping with JA3/JA4 TLS fingerprinting & DataDome cookie caching.
 // Typical latency: 150ms - 300ms per request.
 
-import { gotScraping } from 'got-scraping';
+let _gotScraping: any = null;
+async function getGotScraping() {
+  if (!_gotScraping) {
+    const mod: any = await import('got-scraping');
+    _gotScraping = mod.gotScraping || mod.default || mod;
+  }
+  return _gotScraping;
+}
 import { getCachedDatadomeCookie, setCachedDatadomeCookie, invalidateDatadomeCookie } from './datadomeCache';
 import { getHealthyProxy } from './proxyHealth';
 import { STEALTH_USER_AGENT, STEALTH_CH_UA_HEADERS } from './stealthPatches';
@@ -91,7 +98,8 @@ async function sendPlayerLoginRequest(
     .filter(Boolean)
     .join('; ');
 
-  const response = await gotScraping.post('https://shop.garena.my/api/auth/player_id_login', {
+  const scraper = await getGotScraping();
+  const response = await scraper.post('https://shop.garena.my/api/auth/player_id_login', {
     headers: {
       ...STEALTH_CH_UA_HEADERS,
       'user-agent': STEALTH_USER_AGENT,

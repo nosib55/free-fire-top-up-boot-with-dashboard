@@ -38,10 +38,17 @@ export async function POST(request: Request) {
     }
 
     const targetPipeline = pipeline || 'UNIPIN_VOUCHER';
+    const validPipelines = ['UNIPIN_VOUCHER', 'UNIPIN_WALLET', 'GARENA_SHELLS', 'FLEXBASE_UNIPIN'];
+    if (!validPipelines.includes(targetPipeline)) {
+      return NextResponse.json(
+        { success: false, message: `Invalid pipeline '${targetPipeline}'. Supported: ${validPipelines.join(', ')}` },
+        { status: 400 }
+      );
+    }
     const effectiveCode = voucherCode || `${serial || ''}${pin || ''}`;
     const effectiveItemType = (itemType || diamondPackageId || '').toUpperCase();
 
-    if (targetPipeline === 'UNIPIN_VOUCHER') {
+    if (targetPipeline === 'UNIPIN_VOUCHER' || targetPipeline === 'FLEXBASE_UNIPIN') {
       if (!effectiveCode) {
         return NextResponse.json(
           { success: false, message: 'Missing required field: voucherCode (or serial & pin) is required for UniPin Voucher pipeline.' },
@@ -118,7 +125,7 @@ export async function POST(request: Request) {
       // Deduct 1 API hit
       await deductQuotaOnSuccess(apiKeyDoc._id.toString());
 
-      if (targetPipeline === 'UNIPIN_VOUCHER') {
+      if (targetPipeline === 'UNIPIN_VOUCHER' || targetPipeline === 'FLEXBASE_UNIPIN') {
         const { recordVoucherOutcome } = await import('@/lib/services/voucherService');
         await recordVoucherOutcome({
           voucherCode: effectiveCode,
@@ -156,7 +163,9 @@ export async function POST(request: Request) {
           playerName: executionResult.playerName,
           remainingHits: Math.max(0, (apiKeyDoc.remainingHits ?? 1) - 1),
           latencyMs,
+          rawResponse: executionResult.rawResponse,
         },
+        rawResponse: executionResult.rawResponse,
       });
     }
 
@@ -212,7 +221,7 @@ export async function POST(request: Request) {
 
     // 4. Failure handling: CONSUMED_VOUCHER & ONLY_FOR_BD_REGION
     if (executionResult.errorReason === 'CONSUMED_VOUCHER') {
-      if (targetPipeline === 'UNIPIN_VOUCHER') {
+      if (targetPipeline === 'UNIPIN_VOUCHER' || targetPipeline === 'FLEXBASE_UNIPIN') {
         const { recordVoucherOutcome } = await import('@/lib/services/voucherService');
         await recordVoucherOutcome({
           voucherCode: effectiveCode,
@@ -240,9 +249,10 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          errorReason: 'INVALID_VOUCHER',
-          message: 'UniPin Voucher redemption failed: Voucher is invalid, expired, or already used.',
+          errorReason: 'CONSUMED_VOUCHER',
+          message: 'UniPin Voucher is already used / consumed.',
           quotaDeducted: false,
+          rawResponse: executionResult.rawResponse,
         },
         { status: 400 }
       );
@@ -293,13 +303,14 @@ export async function POST(request: Request) {
           message: executionResult.message,
           errorReason: 'INVALID_UID',
           quotaDeducted: false,
+          rawResponse: executionResult.rawResponse,
         },
         { status: 400 }
       );
     }
 
     if (executionResult.errorReason === 'INVALID_VOUCHER') {
-      if (targetPipeline === 'UNIPIN_VOUCHER') {
+      if (targetPipeline === 'UNIPIN_VOUCHER' || targetPipeline === 'FLEXBASE_UNIPIN') {
         const { recordVoucherOutcome } = await import('@/lib/services/voucherService');
         await recordVoucherOutcome({
           voucherCode: effectiveCode,
@@ -335,6 +346,7 @@ export async function POST(request: Request) {
           errorReason: 'INVALID_VOUCHER',
           quotaDeducted: penaltyDeducted,
           penaltyApplied: penaltyDeducted ? '1 hit penalty deducted due to 3 consecutive invalid vouchers in 5 minutes.' : undefined,
+          rawResponse: executionResult.rawResponse,
         },
         { status: 400 }
       );
@@ -361,6 +373,7 @@ export async function POST(request: Request) {
         message: executionResult.message || 'Top-up worker temporary gateway drop. Your quota has NOT been deducted.',
         errorReason: 'WORKER_ERROR',
         quotaDeducted: false,
+        rawResponse: executionResult.rawResponse,
       },
       { status: 400 }
     );

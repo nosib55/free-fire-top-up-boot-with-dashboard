@@ -1,8 +1,17 @@
 import { Queue, Worker, Job } from 'bullmq';
 import { createBullMQConnection } from '../redis';
 import { processUniPinVoucher, AutomationResult } from '../automation/unipinVoucher';
+import { executeDirectTlsTopup } from '../automation/directTopupEngine';
 import { processUniPinWallet } from '../automation/unipinWallet';
 import { processGarenaShells } from '../automation/garenaShells';
+import { processFlexbaseUnipin } from '../automation/flexbaseUnipin';
+import { warmupShopPage } from '../automation/browserManager';
+
+// Auto-warm background Garena page so that orders execute in 2 seconds
+setTimeout(() => {
+  warmupShopPage().catch(() => {});
+}, 3000);
+
 
 const REDIS_HOST = process.env.REDIS_HOST || '';
 
@@ -24,7 +33,7 @@ if (redisClient) {
 
 export interface TopUpJobData {
   jobId: string;
-  pipeline: 'UNIPIN_VOUCHER' | 'UNIPIN_WALLET' | 'GARENA_SHELLS';
+  pipeline: 'UNIPIN_VOUCHER' | 'UNIPIN_WALLET' | 'GARENA_SHELLS' | 'FLEXBASE_UNIPIN';
   uid: string;
   voucherCode?: string;
   serial?: string;
@@ -103,7 +112,7 @@ if (redisClient) {
         }
 
         try {
-          let result: AutomationResult;
+          let result!: AutomationResult;
 
           if (pipeline === 'UNIPIN_WALLET') {
             result = await processUniPinWallet({ uid, diamondPackageId: diamondPackageId || '100_DIAMONDS' });
@@ -115,7 +124,15 @@ if (redisClient) {
               resellerUserId: job.data.resellerUserId,
             });
           } else {
-            result = await processUniPinVoucher({ uid, voucherCode: voucherCode || '', serial, pin });
+            // 🔥 UniPin Voucher Top-up: Exclusively handled by Flexbase Python API
+            console.log(`[TopUp Queue] 🔥 Executing UniPin voucher top-up exclusively via Flexbase Python API for UID ${uid}...`);
+            result = await processFlexbaseUnipin({
+              uid,
+              voucherCode: voucherCode || '',
+              serial,
+              pin,
+              packageId: diamondPackageId || itemType,
+            });
           }
 
           return result;
@@ -192,11 +209,14 @@ export async function executeTopupDirect(data: TopUpJobData): Promise<Automation
         resellerUserId: data.resellerUserId,
       });
     } else {
-      return await processUniPinVoucher({
+      // 🔥 UniPin Voucher Top-up: Exclusively handled by Flexbase Python API
+      console.log(`[TopUp Direct] 🔥 Executing UniPin voucher top-up exclusively via Flexbase Python API for UID ${data.uid}...`);
+      return await processFlexbaseUnipin({
         uid: data.uid,
         voucherCode: data.voucherCode || '',
         serial: data.serial,
         pin: data.pin,
+        packageId: data.diamondPackageId || data.itemType,
       });
     }
   } finally {

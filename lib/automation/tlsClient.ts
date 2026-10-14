@@ -4,7 +4,14 @@
 // allowing direct API calls without launching a browser — DataDome cannot distinguish
 // these requests from real Chrome traffic.
 
-import { gotScraping, type OptionsOfTextResponseBody } from 'got-scraping';
+let _gotScraping: any = null;
+async function getGotScraping() {
+  if (!_gotScraping) {
+    const mod: any = await import('got-scraping');
+    _gotScraping = mod.gotScraping || mod.default || mod;
+  }
+  return _gotScraping;
+}
 import { STEALTH_USER_AGENT, STEALTH_CH_UA_HEADERS } from './stealthPatches';
 import { getHealthyProxy } from './proxyHealth';
 
@@ -105,7 +112,8 @@ export async function tlsFetch(url: string, options: TlsRequestOptions = {}): Pr
     gotOptions['body'] = body;
   }
 
-  const response = await gotScraping(url, gotOptions as OptionsOfTextResponseBody);
+  const scraper = await getGotScraping();
+  const response = await scraper(url, gotOptions);
 
   const responseBody = response.body as string;
 

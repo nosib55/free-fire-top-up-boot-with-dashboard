@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "lint:fix": "eslint --fix"
+    "lint:fix": "eslint --fix",
+    "flexbase": "python Flexbase_Unipin_Topup_Api_v3/app.py",
+    "flexbase:install": "pip install -r Flexbase_Unipin_Topup_Api_v3/requirements.txt"
   },
   "dependencies": {
     "axios": "^1.19.0",
