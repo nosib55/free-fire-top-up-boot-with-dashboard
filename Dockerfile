@@ -1,6 +1,6 @@
-FROM node:20-bookworm-slim
+FROM node:22-bookworm-slim
 
-# Install system dependencies & Google Chrome for Puppeteer Stealth
+# Install system dependencies, libatomic1, and Google Chrome for Puppeteer
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     gnupg \
@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     python3 \
     python3-pip \
+    libatomic1 \
     fonts-liberation \
     libasound2 \
     libatk-bridge2.0-0 \
@@ -46,8 +47,9 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --d
     && apt-get install -y --no-install-recommends google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 ENV NODE_ENV=production
 ENV PORT=3000
 
@@ -56,8 +58,8 @@ WORKDIR /app
 # Copy package specifications
 COPY package*.json ./
 
-# Install Node dependencies
-RUN npm install --legacy-peer-deps
+# Install Node dependencies cleanly
+RUN npm install --legacy-peer-deps --ignore-scripts
 
 # Copy full application code
 COPY . .

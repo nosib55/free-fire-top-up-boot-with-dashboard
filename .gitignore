@@ -44,6 +44,7 @@ next-env.d.ts
 # scratch & local debug
 scratch/
 failed.json
+transaction.json
 python_worker/*.png
 python_worker/*.html
 python_worker/chrome_profile/

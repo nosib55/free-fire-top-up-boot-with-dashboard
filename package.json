@@ -24,7 +24,6 @@
     "mongodb": "^7.5.0",
     "mongoose": "^9.8.1",
     "next": "16.2.12",
-    "node": "^26.5.0",
     "postcss": "^8.5.24",
     "puppeteer": "^25.4.0",
     "puppeteer-extra": "^3.3.6",
