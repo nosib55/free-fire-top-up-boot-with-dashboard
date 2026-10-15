@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.env.local
+failed.json
+transaction.json
+python_worker/*.png
+python_worker/*.html
+python_worker/chrome_profile
+scratch
