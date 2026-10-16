@@ -50,7 +50,6 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --d
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
-ENV NODE_ENV=production
 ENV PORT=3000
 
 WORKDIR /app
@@ -58,14 +57,17 @@ WORKDIR /app
 # Copy package specifications
 COPY package*.json ./
 
-# Install Node dependencies cleanly
-RUN npm install --legacy-peer-deps --ignore-scripts
+# Install Node dependencies including build tools
+RUN npm install --include=dev --legacy-peer-deps --ignore-scripts
 
 # Copy full application code
 COPY . .
 
 # Build Next.js application
 RUN npm run build
+
+# Switch to production mode after successful build
+ENV NODE_ENV=production
 
 EXPOSE 3000
 
