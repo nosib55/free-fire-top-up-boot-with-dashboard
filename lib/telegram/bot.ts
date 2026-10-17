@@ -277,8 +277,8 @@ export async function notifyLowBalanceAlert(type: string, balance: number): Prom
   const text = `⚠️ *Low Balance Warning!*
 ━━━━━━━━━━━━━━━━━━━━
 *Platform:* ${type}
-*Remaining Balance:* ৳${balance} / Shells: ${balance}
-*Action Required:* Please recharge wallet/shell balance to avoid worker downtime.`;
+*Remaining Balance:* ৳${balance} UC
+*Action Required:* Please recharge wallet balance to avoid worker downtime.`;
 
   await sendTelegramAdminAlert(text);
 }
@@ -309,21 +309,19 @@ export async function handleTelegramBotCommand(commandText: string): Promise<str
 
 📋 *Available Commands:*
 ━━━━━━━━━━━━━━━━━━━━
-• \`/balance\` — View live UniPin & Garena Shell balance
+• \`/balance\` — View live UniPin balance
 • \`/key_info <API_KEY>\` — Check key quota, expiry & stats
 • \`/recent\` — View latest 5 transactions
 • \`/pause_queue\` — Pause top-up automation workers
 • \`/resume_queue\` — Resume top-up workers
 • \`/health\` — Platform telemetry & memory stats
-• \`/sync_balance\` — Force refresh wallet & shell balances`;
+• \`/sync_balance\` — Force refresh UniPin wallet balance`;
   }
 
   // 1. /balance — View synced worker balances
   if (command === '/balance') {
     const setting = await SystemSetting.findOne().lean();
     const unipin = (setting as any)?.unipinWalletBalance ?? 14500;
-    const shells = (setting as any)?.garenaShellsBalance ?? 2400;
-    const bdgames = (setting as any)?.bdgamesbazarBalance ?? 5200;
     const syncTime = (setting as any)?.lastBalanceSyncAt
       ? new Date((setting as any).lastBalanceSyncAt).toLocaleTimeString()
       : 'Just now';
@@ -331,8 +329,6 @@ export async function handleTelegramBotCommand(commandText: string): Promise<str
     return `💰 *Global Worker Balance Summary*
 ━━━━━━━━━━━━━━━━━━━━
 💳 *UniPin Wallet:* ৳${Number(unipin).toLocaleString()} UC
-🐚 *Garena Shells:* ${Number(shells).toLocaleString()} Shells
-🏪 *BDGamesBazar:* ৳${Number(bdgames).toLocaleString()} BDT
 🕒 *Last Synced:* ${syncTime}
 ⚡ *Worker Pools:* Operational 🟢
 
@@ -420,8 +416,6 @@ _Tip: Use \`/sync_balance\` to scrape fresh balances right now._`;
       return `🔄 *Platform Balance Synchronization Complete!*
 ━━━━━━━━━━━━━━━━━━━━
 💳 *UniPin Wallet:* ৳${res.unipinWallet} UC
-🐚 *Garena Shells:* ${res.garenaShells} Shells
-🏪 *BDGamesBazar:* ৳${res.bdgamesbazar} BDT
 🕒 *Updated:* ${res.syncedAt.toLocaleTimeString()}`;
     } catch (e: any) {
       return `❌ Balance sync encountered an issue: ${e?.message}`;

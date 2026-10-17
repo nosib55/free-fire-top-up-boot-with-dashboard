@@ -547,7 +547,7 @@ export default function TelegramBotSetupPage() {
             <div className="space-y-2.5 text-xs font-mono">
               <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80">
                 <span className="text-cyan-400 font-bold">/balance</span>
-                <p className="text-[11px] text-slate-400 font-sans mt-0.5">View live UniPin & Garena Shell balance</p>
+                <p className="text-[11px] text-slate-400 font-sans mt-0.5">View live UniPin balance</p>
               </div>
 
               <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80">

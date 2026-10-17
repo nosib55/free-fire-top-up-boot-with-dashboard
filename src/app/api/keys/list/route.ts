@@ -17,13 +17,29 @@ export async function GET(request: Request) {
       .skip(skip)
       .limit(limit);
 
+    const sanitizedKeys = keys.map((keyDoc) => {
+      const k = (keyDoc as any).toObject ? (keyDoc as any).toObject() : keyDoc;
+      const total = k.totalLimit || k.totalHits || 1000;
+      const remaining = k.remainingHits !== undefined ? k.remainingHits : Math.max(0, total - (k.usedHits || k.usedCount || 0));
+      const used = Math.max(k.usedHits || 0, k.usedCount || 0, total - remaining);
+
+      return {
+        ...k,
+        totalLimit: total,
+        totalHits: total,
+        remainingHits: remaining,
+        usedHits: used,
+        usedCount: used,
+      };
+    });
+
     const totalKeys = await ApiKey.countDocuments();
     const activeKeys = await ApiKey.countDocuments({ status: 'active', isActive: true });
     const expiredKeys = await ApiKey.countDocuments({ status: 'expired' });
 
     return NextResponse.json({
       success: true,
-      keys,
+      keys: sanitizedKeys,
       pagination: {
         page,
         limit,
@@ -62,9 +78,11 @@ export async function PATCH(request: Request) {
         const limit = Math.max(0, parseInt(totalLimit, 10));
         keyDoc.totalLimit = limit;
         keyDoc.totalHits = limit;
-        const used = keyDoc.usedCount !== undefined ? keyDoc.usedCount : (keyDoc.usedHits || 0);
+        const used = Math.max(keyDoc.usedHits || 0, keyDoc.usedCount || 0);
         const newRemaining = Math.max(0, limit - used);
         keyDoc.remainingHits = newRemaining;
+        keyDoc.usedCount = used;
+        keyDoc.usedHits = used;
 
         if (keyDoc.ownerId) {
           const User = (await import('@/models/User')).default;
@@ -114,8 +132,11 @@ export async function PATCH(request: Request) {
       const limit = parseInt(totalLimit, 10);
       keyDoc.totalLimit = limit;
       keyDoc.totalHits = limit;
-      const newRemaining = Math.max(0, limit - (keyDoc.usedCount || keyDoc.usedHits || 0));
+      const used = Math.max(keyDoc.usedHits || 0, keyDoc.usedCount || 0);
+      const newRemaining = Math.max(0, limit - used);
       keyDoc.remainingHits = newRemaining;
+      keyDoc.usedCount = used;
+      keyDoc.usedHits = used;
 
       if (keyDoc.ownerId) {
         const User = (await import('@/models/User')).default;

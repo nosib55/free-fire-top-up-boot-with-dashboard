@@ -85,7 +85,7 @@ export async function validateApiKey(keyString: string, clientIp?: string): Prom
 export async function deductQuotaOnSuccess(apiKeyId: string): Promise<void> {
   await dbConnect();
   await ApiKey.findByIdAndUpdate(apiKeyId, {
-    $inc: { remainingHits: -1, usedHits: 1 },
+    $inc: { remainingHits: -1, usedHits: 1, usedCount: 1 },
     $set: { consecutiveInvalidVouchers: 0 },
   });
 }
@@ -112,6 +112,7 @@ export async function handleAbuseDefense(apiKeyDoc: IApiKey): Promise<{ penaltyD
     if ((apiKeyDoc.remainingHits ?? 0) > 0) {
       apiKeyDoc.remainingHits = (apiKeyDoc.remainingHits ?? 0) - 1;
       apiKeyDoc.usedHits = (apiKeyDoc.usedHits ?? 0) + 1;
+      apiKeyDoc.usedCount = (apiKeyDoc.usedCount ?? 0) + 1;
       penaltyDeducted = true;
 
       // Log transaction penalty

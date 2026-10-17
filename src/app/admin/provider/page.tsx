@@ -17,7 +17,7 @@ import {
 export default function ProviderGatewayPage() {
   const [providerData, setProviderData] = useState<any>({
     providerApiKey: 'STANDBY',
-    upstreamServerUrl: 'https://shop.garena.my/api/process-order',
+    upstreamServerUrl: 'https://api.unipin.com/api/process-order',
     connectionStatus: 'STANDBY',
     totalAllocatedHits: 0,
     consumedHits: 0,
@@ -68,7 +68,7 @@ export default function ProviderGatewayPage() {
         status: 'SUCCESS',
         statusCode: 200,
         latencyMs: latency,
-        message: 'Ping response received from Upstream Garena Gateway.',
+        message: 'Ping response received from Upstream UniPin Gateway.',
         endpoint: providerData.upstreamServerUrl,
       });
     } catch (err: any) {

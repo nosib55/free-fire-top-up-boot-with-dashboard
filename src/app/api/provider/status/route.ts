@@ -17,7 +17,7 @@ export async function GET() {
 
     const masterQuotaStats = {
       providerApiKey: settings.upstreamApiKey ? `${settings.upstreamApiKey.substring(0, 10)}...` : 'NOT_CONFIGURED',
-      upstreamServerUrl: settings.upstreamServerUrl || 'https://shop.garena.my/api/process-order',
+      upstreamServerUrl: settings.upstreamServerUrl || 'https://api.unipin.com/api/process-order',
       connectionStatus: settings.upstreamApiKey ? 'CONNECTED' : 'STANDBY',
       totalAllocatedHits,
       consumedHits,

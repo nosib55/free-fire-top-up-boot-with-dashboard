@@ -380,9 +380,11 @@ export default function ApiKeyManagerPage() {
                 </tr>
               ) : (
                 filteredKeys.map((k) => {
-                  const used = k.usedCount !== undefined ? k.usedCount : k.usedHits || 0;
-                  const total = k.totalLimit !== undefined ? k.totalLimit : k.totalHits || 1000;
-                  const available = Math.max(0, total - used);
+                  const total = k.totalLimit !== undefined && k.totalLimit > 0 ? k.totalLimit : (k.totalHits || 1000);
+                  const available = k.remainingHits !== undefined
+                    ? k.remainingHits
+                    : Math.max(0, total - (k.usedHits !== undefined && k.usedHits > 0 ? k.usedHits : (k.usedCount || 0)));
+                  const used = Math.max(k.usedHits || 0, k.usedCount || 0, total - available);
                   const isUnlimited = new Date(k.expiresAt).getFullYear() > 2090;
                   const isExpired = !isUnlimited && new Date() > new Date(k.expiresAt);
                   const isRevoked = !k.isActive || k.status === 'suspended';
@@ -568,7 +570,14 @@ export default function ApiKeyManagerPage() {
                     Total Quota Limit (Hits)
                   </label>
                   <span className="text-[11px] text-slate-400 font-mono">
-                    Used so far: <strong className="text-amber-400">{editingKey.usedCount || editingKey.usedHits || 0}</strong>
+                    Used so far:{' '}
+                    <strong className="text-amber-400">
+                      {Math.max(
+                        editingKey.usedHits || 0,
+                        editingKey.usedCount || 0,
+                        (editingKey.totalLimit || editingKey.totalHits || 0) - (editingKey.remainingHits !== undefined ? editingKey.remainingHits : (editingKey.totalLimit || 0))
+                      )}
+                    </strong>
                   </span>
                 </div>
 
@@ -603,7 +612,16 @@ export default function ApiKeyManagerPage() {
                 <div className="flex items-center justify-between text-[11px] font-mono px-1">
                   <span className="text-slate-500">Calculated Available Balance:</span>
                   <span className="text-emerald-400 font-bold">
-                    {Math.max(0, (parseInt(editTotalLimit, 10) || 0) - (editingKey.usedCount || editingKey.usedHits || 0)).toLocaleString()} Hits
+                    {Math.max(
+                      0,
+                      (parseInt(editTotalLimit, 10) || 0) -
+                        Math.max(
+                          editingKey.usedHits || 0,
+                          editingKey.usedCount || 0,
+                          (editingKey.totalLimit || editingKey.totalHits || 0) - (editingKey.remainingHits !== undefined ? editingKey.remainingHits : (editingKey.totalLimit || 0))
+                        )
+                    ).toLocaleString()}{' '}
+                    Hits
                   </span>
                 </div>
               </div>
@@ -850,7 +868,10 @@ export default function ApiKeyManagerPage() {
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-slate-500 font-semibold">Remaining Quota:</span>
                 <span className="text-emerald-400 font-mono font-bold">
-                  {(deletingKey.remainingHits ?? Math.max(0, (deletingKey.totalLimit || 0) - (deletingKey.usedCount || 0))).toLocaleString()} hits
+                  {(deletingKey.remainingHits !== undefined
+                    ? deletingKey.remainingHits
+                    : Math.max(0, (deletingKey.totalLimit || 0) - (deletingKey.usedHits || deletingKey.usedCount || 0))
+                  ).toLocaleString()} hits
                 </span>
               </div>
             </div>

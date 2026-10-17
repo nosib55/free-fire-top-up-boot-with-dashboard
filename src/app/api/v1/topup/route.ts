@@ -38,10 +38,21 @@ export async function POST(request: Request) {
     }
 
     const targetPipeline = pipeline || 'UNIPIN_VOUCHER';
+    if (targetPipeline === 'GARENA_SHELLS') {
+      return NextResponse.json(
+        {
+          success: false,
+          errorReason: 'PIPELINE_DISABLED',
+          message: 'Garena Shells pipeline is disabled. Only UniPin top-up is supported.',
+          quotaDeducted: false,
+        },
+        { status: 400 }
+      );
+    }
     const effectiveCode = voucherCode || `${serial || ''}${pin || ''}`;
     const effectiveItemType = (itemType || diamondPackageId || '').toUpperCase();
 
-    if (targetPipeline === 'UNIPIN_VOUCHER') {
+    if (targetPipeline === 'UNIPIN_VOUCHER' || targetPipeline === 'FLEXBASE_UNIPIN') {
       if (!effectiveCode) {
         return NextResponse.json(
           { success: false, message: 'Missing required field: voucherCode (or serial & pin) is required for UniPin Voucher pipeline.' },
@@ -58,36 +69,6 @@ export async function POST(request: Request) {
             success: false,
             message: 'UniPin Voucher redemption failed: Voucher is invalid, expired, or already used.',
             errorReason: 'INVALID_VOUCHER',
-            quotaDeducted: false,
-          },
-          { status: 400 }
-        );
-      }
-    }
-
-    // 1.5 Validate Garena Shells packages & Level Up requirements
-    if (targetPipeline === 'GARENA_SHELLS') {
-      const { ALLOWED_GARENA_SHELL_PACKAGES, LEVEL_UP_REQUIRED_LEVELS } = await import('@/lib/automation/garenaShells');
-      if (!ALLOWED_GARENA_SHELL_PACKAGES.includes(effectiveItemType)) {
-        return NextResponse.json(
-          {
-            success: false,
-            errorReason: 'UNSUPPORTED_PACKAGE',
-            message: `Only Special Deals (WEEKLY_MEMBERSHIP, MONTHLY_MEMBERSHIP, WEEKLY_LITE, LEVEL_UP_6, LEVEL_UP_10, LEVEL_UP_15, LEVEL_UP_20, LEVEL_UP_25, LEVEL_UP_30) are available via Garena Shells. '${effectiveItemType}' is not supported.`,
-            quotaDeducted: false,
-          },
-          { status: 400 }
-        );
-      }
-
-      const reqLevel = LEVEL_UP_REQUIRED_LEVELS[effectiveItemType];
-      const currentLevel = Number(body.playerLevel ?? body.level);
-      if (reqLevel && currentLevel && currentLevel < reqLevel) {
-        return NextResponse.json(
-          {
-            success: false,
-            errorReason: 'INSUFFICIENT_LEVEL',
-            message: `Player level (${currentLevel}) is less than the required Level Up Package level (${reqLevel}). Cannot purchase.`,
             quotaDeducted: false,
           },
           { status: 400 }

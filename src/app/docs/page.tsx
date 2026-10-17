@@ -92,11 +92,6 @@ export default function ApiDocsPage() {
     { id: 'overview', label: 'Overview', icon: Zap, badge: 'Gateway' },
     { id: 'unipin', label: 'UniPin TopUp (BD)', icon: Flame, badge: 'UPBD / BDMB' },
     { id: 'unipin-check', label: 'UniPin Voucher Check', icon: Search, badge: 'Status/History' },
-    { id: 'garena-accounts', label: 'Reseller Garena Accounts', icon: Database, badge: 'Auto-Login' },
-    { id: 'garena-balance', label: 'Shell Balance API', icon: Coins, badge: 'Live Sync' },
-    { id: 'garena-redeem', label: 'Shell PIN Load (Redeem)', icon: CreditCard, badge: 'Bulk 10-20' },
-    { id: 'bd-my-shell', label: 'MY Shell (BD - Deals)', icon: Layers, badge: 'Not Enough Shell' },
-    { id: 'bd-sg-shell', label: 'SG Shell (BD)', icon: Server, badge: 'shop.garena.sg' },
     { id: 'player-check', label: 'Player Check (UID)', icon: Search, badge: 'FREE 100%' },
     { id: 'auth', label: 'Authentication', icon: Lock, badge: 'API Keys' },
     { id: 'credits', label: 'Credits & /status', icon: ShieldCheck, badge: 'Quota' },
@@ -197,14 +192,14 @@ export default function ApiDocsPage() {
 
             <div className="px-3.5 py-1.5 rounded-lg text-xs font-bold shrink-0 flex items-center gap-1.5 bg-cyan-600 text-white shadow-md shadow-cyan-600/30 border border-cyan-400/40">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span>BD (Bangladesh - UniPin + Shell)</span>
+              <span>BD (Bangladesh - UniPin Automation)</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
             <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-              High-Speed Engine (5–8s)
+              High-Speed Engine (2–5s)
             </span>
             <span className="hidden lg:inline text-slate-500">|</span>
             <span className="text-slate-400 font-sans text-xs">
@@ -294,7 +289,7 @@ export default function ApiDocsPage() {
                 <span>Reseller Automation</span>
               </div>
               <p className="text-slate-400 text-[11px] leading-relaxed">
-                Save your Garena Shell accounts in DB, load bulk prepaid PINs (with captcha solver), and execute top-ups with zero quota loss on errors.
+                Execute instant UniPin voucher top-ups (UPBD & BDMB) with high concurrency, rate-limit protection, and zero quota loss on errors.
               </p>
               <Link
                 href={dashboardHref}
@@ -319,28 +314,28 @@ export default function ApiDocsPage() {
                       BANGLADESH (BD) FREE FIRE API
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
-                      STEALTH ENGINE READY (5–8s)
+                      STEALTH ENGINE READY (2–5s)
                     </span>
                   </div>
 
                   <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-                    BD UniPin &amp; Garena Shell Automation Gateway
+                    BD UniPin Automation Gateway
                   </h1>
 
                   <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-3xl">
-                    High-speed programmatic gateway for Free Fire top-ups in Bangladesh. Supports instant <strong>UniPin Vouchers (BDMB / UPBD)</strong> with batch execution, <strong>Reseller Garena Account auto-login</strong>, <strong>Live Shell Balance Checking</strong>, <strong>Bulk PIN Loading with Captcha Solver</strong>, and <strong>100% Free Live Player UID lookup</strong>.
+                    High-speed programmatic gateway for Free Fire top-ups in Bangladesh. Supports instant <strong>UniPin Vouchers (BDMB / UPBD)</strong> with batch execution, <strong>Automatic format detection</strong>, and <strong>100% Free Live Player UID lookup</strong>.
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
                     <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
                       <div className="text-[11px] font-mono text-slate-400">Execution Speed</div>
-                      <div className="text-sm font-bold text-white">5–8 Seconds Execution</div>
-                      <div className="text-[11px] text-cyan-400">Warm browser pool &amp; direct DOM automation</div>
+                      <div className="text-sm font-bold text-white">2–5 Seconds Execution</div>
+                      <div className="text-[11px] text-cyan-400">Direct engine automation</div>
                     </div>
                     <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-                      <div className="text-[11px] font-mono text-slate-400">Reseller Shell Pool</div>
-                      <div className="text-sm font-bold text-white">Auto-Login &amp; Saved Accounts</div>
-                      <div className="text-[11px] text-emerald-400">No credentials needed per order call</div>
+                      <div className="text-[11px] font-mono text-slate-400">Voucher Auto-Detect</div>
+                      <div className="text-sm font-bold text-white">UPBD &amp; BDMB Supported</div>
+                      <div className="text-[11px] text-emerald-400">Zero manual denomination config</div>
                     </div>
                     <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
                       <div className="text-[11px] font-mono text-slate-400">Zero Quota Loss</div>
@@ -600,300 +595,7 @@ echo $response;`}
               </div>
             </section>
 
-            {/* ==================== SECTION: RESELLER GARENA ACCOUNTS ==================== */}
-            <section id="garena-accounts" className="scroll-mt-36 space-y-6">
-              <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5">
-                    <Database className="w-6 h-6 text-amber-400" />
-                    <span>Reseller Garena Account Management</span>
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                    Save your Garena account in the database once. The top-up engine automatically uses your saved account for Garena Shell deals without sending credentials per order.
-                  </p>
-                </div>
-                <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-mono font-bold">
-                  /api/v1/garena/accounts
-                </span>
-              </div>
 
-              {/* Endpoints Table */}
-              <div className="rounded-2xl border border-slate-800 overflow-hidden bg-slate-900">
-                <table className="w-full text-left text-xs text-slate-300 min-w-[650px]">
-                  <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
-                    <tr>
-                      <th className="p-3.5">Method</th>
-                      <th className="p-3.5">Endpoint</th>
-                      <th className="p-3.5">Description</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
-                    <tr>
-                      <td className="p-3.5 text-emerald-400 font-bold">GET</td>
-                      <td className="p-3.5 text-slate-200">/api/v1/garena/accounts</td>
-                      <td className="p-3.5 font-sans text-slate-400">List all saved Garena accounts under your reseller profile</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3.5 text-cyan-400 font-bold">POST</td>
-                      <td className="p-3.5 text-slate-200">/api/v1/garena/accounts</td>
-                      <td className="p-3.5 font-sans text-slate-400">Save a new Garena account (username, password, cookie, region, isPrimary)</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3.5 text-amber-400 font-bold">PATCH</td>
-                      <td className="p-3.5 text-slate-200">/api/v1/garena/accounts</td>
-                      <td className="p-3.5 font-sans text-slate-400">Update account nickname, set primary, or refresh cookie</td>
-                    </tr>
-                    <tr>
-                      <td className="p-3.5 text-rose-400 font-bold">DELETE</td>
-                      <td className="p-3.5 text-slate-200">/api/v1/garena/accounts?id=ACCOUNT_ID</td>
-                      <td className="p-3.5 font-sans text-slate-400">Remove a saved Garena account</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Sample POST Payload */}
-              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
-                  POST /api/v1/garena/accounts (Save Account Payload)
-                </span>
-                <pre className="text-xs font-mono text-amber-300 bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-x-auto">
-{`{
-  "username": "reseller_shell_master",
-  "password": "your_secure_password",
-  "accountNickname": "Primary MY Shell Account",
-  "region": "MY",
-  "isPrimary": true
-}`}
-                </pre>
-              </div>
-            </section>
-
-            {/* ==================== SECTION: LIVE SHELL BALANCE ==================== */}
-            <section id="garena-balance" className="scroll-mt-36 space-y-6">
-              <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5">
-                    <Coins className="w-6 h-6 text-amber-400" />
-                    <span>Live Garena Shell Balance Check API</span>
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                    Directly fetch the real-time shell balance from your saved Garena account with live gateway sync.
-                  </p>
-                </div>
-                <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-mono font-bold">
-                  GET /api/v1/garena/balance
-                </span>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider block">
-                  Balance Response (200 OK)
-                </span>
-                <pre className="text-xs font-mono text-cyan-300 bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-x-auto">
-{`{
-  "success": true,
-  "username": "reseller_shell_master",
-  "accountNickname": "Primary MY Shell Account",
-  "shellsBalance": 1850,
-  "region": "MY",
-  "status": "ACTIVE",
-  "lastSync": "2026-09-04T12:55:00.000Z",
-  "cached": false,
-  "message": "Garena Shells Balance synced: 1850 Shells"
-}`}
-                </pre>
-              </div>
-            </section>
-
-            {/* ==================== SECTION: GARENA SHELL PIN LOAD (REDEEM) ==================== */}
-            <section id="garena-redeem" className="scroll-mt-36 space-y-6">
-              <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5">
-                    <CreditCard className="w-6 h-6 text-emerald-400" />
-                    <span>Shell PIN Load &amp; Bulk Redeem (with Captcha Bypass)</span>
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                    Redeem prepaid Garena Shell voucher PINs into your account. Supports bulk submission (10–20 PINs) with incognito session rotation and automatic 2Captcha / Turnstile solving.
-                  </p>
-                </div>
-                <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-mono font-bold">
-                  POST /api/v1/garena/redeem
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
-                    Bulk PIN Load Request (1–20 PINs)
-                  </span>
-                  <pre className="text-xs font-mono text-slate-200 bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-x-auto">
-{`{
-  "pins": [
-    "9812489123891231",
-    "9812489123891232",
-    "9812489123891233"
-  ]
-}`}
-                  </pre>
-                </div>
-
-                <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block">
-                    Bulk Load Response (200 OK)
-                  </span>
-                  <pre className="text-xs font-mono text-emerald-300 bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-x-auto">
-{`{
-  "success": true,
-  "message": "Successfully processed 3 card(s). Loaded: 3 card(s).",
-  "totalLoaded": 3,
-  "totalCards": 3,
-  "currentShellsBalance": 2000,
-  "successfulCards": [
-    "9812489123891231",
-    "9812489123891232",
-    "9812489123891233"
-  ],
-  "failedCards": []
-}`}
-                  </pre>
-                </div>
-              </div>
-            </section>
-
-            {/* ==================== SECTION: MY SHELL (DEALS) ==================== */}
-            <section id="bd-my-shell" className="scroll-mt-36 space-y-6">
-              <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5">
-                    <Layers className="w-6 h-6 text-amber-400" />
-                    <span>MY Shell (BD Server — Special Deals)</span>
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                    Automated Free Fire package purchase via Garena Shells with automatic balance checking.
-                  </p>
-                </div>
-                <span className="hidden sm:inline-block px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-mono font-bold">
-                  pipeline: &quot;GARENA_SHELLS&quot;
-                </span>
-              </div>
-
-              {/* Package Costs Table */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  Supported Deals, Package Codes &amp; Shell Pricing
-                </h3>
-
-                <div className="rounded-2xl border border-slate-800 overflow-hidden bg-slate-900">
-                  <table className="w-full text-left text-xs text-slate-300 min-w-[650px]">
-                    <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
-                      <tr>
-                        <th className="p-3.5">Deal / Package</th>
-                        <th className="p-3.5">diamondPackageId</th>
-                        <th className="p-3.5">Shell Cost</th>
-                        <th className="p-3.5">Level Requirement</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
-                      <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 font-sans font-bold text-white">Weekly Lite</td>
-                        <td className="p-3.5 text-amber-400 font-bold">WEEKLY_LITE (or LITE)</td>
-                        <td className="p-3.5 text-emerald-400 font-bold">35 Shells</td>
-                        <td className="p-3.5 font-sans text-slate-400">None</td>
-                      </tr>
-                      <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 font-sans font-bold text-white">Weekly Membership</td>
-                        <td className="p-3.5 text-amber-400 font-bold">WEEKLY_MEMBERSHIP</td>
-                        <td className="p-3.5 text-emerald-400 font-bold">100 Shells</td>
-                        <td className="p-3.5 font-sans text-slate-400">None</td>
-                      </tr>
-                      <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 font-sans font-bold text-white">Monthly Membership</td>
-                        <td className="p-3.5 text-amber-400 font-bold">MONTHLY_MEMBERSHIP</td>
-                        <td className="p-3.5 text-emerald-400 font-bold">500 Shells</td>
-                        <td className="p-3.5 font-sans text-slate-400">None</td>
-                      </tr>
-                      <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 font-sans font-bold text-white">Level Up Pass - Lv 6</td>
-                        <td className="p-3.5 text-cyan-400 font-bold">LEVEL_UP_6</td>
-                        <td className="p-3.5 text-emerald-400 font-bold">50 Shells</td>
-                        <td className="p-3.5 font-sans text-emerald-400 font-bold">Player Level &ge; 6</td>
-                      </tr>
-                      <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 font-sans font-bold text-white">Level Up Pass - Lv 10</td>
-                        <td className="p-3.5 text-cyan-400 font-bold">LEVEL_UP_10</td>
-                        <td className="p-3.5 text-emerald-400 font-bold">80 Shells</td>
-                        <td className="p-3.5 font-sans text-emerald-400 font-bold">Player Level &ge; 10</td>
-                      </tr>
-                      <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 font-sans font-bold text-white">Level Up Pass - Lv 15</td>
-                        <td className="p-3.5 text-cyan-400 font-bold">LEVEL_UP_15</td>
-                        <td className="p-3.5 text-emerald-400 font-bold">100 Shells</td>
-                        <td className="p-3.5 font-sans text-emerald-400 font-bold">Player Level &ge; 15</td>
-                      </tr>
-                      <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 font-sans font-bold text-white">Level Up Pass - Lv 20 / 25 / 30</td>
-                        <td className="p-3.5 text-cyan-400 font-bold">LEVEL_UP_20, 25, 30</td>
-                        <td className="p-3.5 text-emerald-400 font-bold">150–300 Shells</td>
-                        <td className="p-3.5 font-sans text-emerald-400 font-bold">Player Level &ge; 20, 25, 30</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Insufficient Shell Error Sample */}
-              <div className="p-5 rounded-2xl bg-slate-900 border border-rose-500/30 space-y-3">
-                <span className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4" /> Error Response: NOT_ENOUGH_SHELLS (400 Bad Request)
-                </span>
-                <p className="text-xs text-slate-300">
-                  If your saved Garena account has fewer shells than required for the package, the API immediately rejects the order with <strong>0 quota deducted</strong>:
-                </p>
-                <pre className="text-xs font-mono text-rose-300 bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-x-auto">
-{`{
-  "success": false,
-  "errorReason": "NOT_ENOUGH_SHELLS",
-  "message": "Not enough shell: Current account balance (20 Shells) is less than required package cost (100 Shells for WEEKLY_MEMBERSHIP). Please recharge shells.",
-  "quotaDeducted": false
-}`}
-                </pre>
-              </div>
-            </section>
-
-            {/* ==================== SECTION: SG SHELL (BD) ==================== */}
-            <section id="bd-sg-shell" className="scroll-mt-36 space-y-6">
-              <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5">
-                    <Server className="w-6 h-6 text-emerald-400" />
-                    <span>SG Shell (BD Server — shop.garena.sg)</span>
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                    Automated Singapore Garena Shell provider for users who prefer <code className="text-emerald-400">shop.garena.sg</code> routing.
-                  </p>
-                </div>
-                <span className="hidden sm:inline-block px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-mono font-bold">
-                  code: &quot;sgshell&quot;
-                </span>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  SG Shell operates identically to MY Shell, with the exception of the pipeline parameter <code className="text-emerald-400 font-mono">code: &quot;sgshell&quot;</code>.
-                </p>
-
-                <pre className="text-xs font-mono text-emerald-300 bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-x-auto">
-{`{
-  "orderid": "test-sg-002",
-  "playerid": "5162333961",
-  "code": "sgshell",
-  "package": "LITE"
-}`}
-                </pre>
-              </div>
-            </section>
 
             {/* ==================== SECTION: PLAYER CHECK / UID ==================== */}
             <section id="player-check" className="scroll-mt-36 space-y-6">
@@ -904,7 +606,7 @@ echo $response;`}
                     <span>Player Check / UID Lookup</span>
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                    Query live Garena servers to retrieve the real in-game player name and region prior to taking client money.
+                    Query live Free Fire game servers to retrieve the real in-game player name and region prior to taking client money.
                   </p>
                 </div>
                 <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-mono font-bold">
@@ -1040,7 +742,7 @@ Authorization: Bearer YOUR_API_KEY
                     <span>Error Codes &amp; Quota Protection Rules</span>
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                    Strict Zero-Loss Quota Guarantee: Quota hits are deducted <strong>ONLY</strong> upon confirmed success on Garena servers.
+                    Strict Zero-Loss Quota Guarantee: Quota hits are deducted <strong>ONLY</strong> upon confirmed success on UniPin gateways.
                   </p>
                 </div>
               </div>
@@ -1061,38 +763,9 @@ Authorization: Bearer YOUR_API_KEY
                         <td className="p-3.5 text-emerald-400 font-bold">200 OK</td>
                         <td className="p-3.5 text-white font-semibold">SUCCESS</td>
                         <td className="p-3.5 text-emerald-400 font-bold">1 Hit</td>
-                        <td className="p-3.5 font-sans text-slate-300">Diamonds or special deal confirmed on Garena.</td>
+                        <td className="p-3.5 font-sans text-slate-300">Diamonds or package confirmed via UniPin.</td>
                       </tr>
-                      <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 text-rose-400 font-bold">400 Bad Request</td>
-                        <td className="p-3.5 text-rose-300 font-semibold">NOT_ENOUGH_SHELLS</td>
-                        <td className="p-3.5 text-slate-400 font-bold">0 Hits (Preserved)</td>
-                        <td className="p-3.5 font-sans text-slate-300">Garena account balance is lower than package cost. Recharge shells via /api/v1/garena/redeem.</td>
-                      </tr>
-                      <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 text-rose-400 font-bold">400 Bad Request</td>
-                        <td className="p-3.5 text-rose-300 font-semibold">CONSUMED_VOUCHER</td>
-                        <td className="p-3.5 text-slate-400 font-bold">0 Hits (Preserved)</td>
-                        <td className="p-3.5 font-sans text-slate-300">UniPin voucher code has already been redeemed previously.</td>
-                      </tr>
-                      <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 text-rose-400 font-bold">400 Bad Request</td>
-                        <td className="p-3.5 text-rose-300 font-semibold">ONLY_FOR_BD_REGION</td>
-                        <td className="p-3.5 text-slate-400 font-bold">0 Hits (Preserved)</td>
-                        <td className="p-3.5 font-sans text-slate-300">Player UID is not registered in Bangladesh server. Voucher is safe.</td>
-                      </tr>
-                      <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 text-rose-400 font-bold">400 Bad Request</td>
-                        <td className="p-3.5 text-rose-300 font-semibold">INVALID_UID</td>
-                        <td className="p-3.5 text-slate-400 font-bold">0 Hits (Preserved)</td>
-                        <td className="p-3.5 font-sans text-slate-300">Player UID does not exist on Garena servers.</td>
-                      </tr>
-                      <tr className="hover:bg-slate-800/40">
-                        <td className="p-3.5 text-rose-400 font-bold">400 Bad Request</td>
-                        <td className="p-3.5 text-rose-300 font-semibold">INSUFFICIENT_LEVEL</td>
-                        <td className="p-3.5 text-slate-400 font-bold">0 Hits (Preserved)</td>
-                        <td className="p-3.5 font-sans text-slate-300">Player level is below the requirement for the selected Level Up pass.</td>
-                      </tr>
+
                       <tr className="hover:bg-slate-800/40">
                         <td className="p-3.5 text-amber-400 font-bold">401 Unauthorized</td>
                         <td className="p-3.5 text-amber-300 font-semibold">INVALID_API_KEY</td>
@@ -1139,10 +812,10 @@ Authorization: Bearer YOUR_API_KEY
                 <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
                   <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
                     <Layers className="w-4 h-4" />
-                    <span>2. Level Up Pass Restrictions</span>
+                    <span>2. Voucher Formats Supported</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    Level Up Passes can only be purchased <strong>once per player lifetime</strong>. Always verify the player level with the 100% Free <code className="text-emerald-400">/api/v1/validate-uid</code> endpoint before placing an order.
+                    Our platform automatically detects and processes both <strong>BDMB</strong> (UniPin Mobile) and <strong>UPBD</strong> voucher serials and PINs instantly with zero manual configuration.
                   </p>
                 </div>
 
@@ -1152,7 +825,7 @@ Authorization: Bearer YOUR_API_KEY
                     <span>3. HTTP Timeout Settings (30 Seconds)</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    Our stealth automation engine performs real-time browser interaction with Garena gateways in <strong>5–8 seconds</strong>. Set your client HTTP request timeout to at least <strong>30 seconds</strong> to avoid premature dropoffs.
+                    Our stealth automation engine performs real-time browser interaction with UniPin gateways in <strong>2–5 seconds</strong>. Set your client HTTP request timeout to at least <strong>30 seconds</strong> to avoid premature dropoffs.
                   </p>
                 </div>
 

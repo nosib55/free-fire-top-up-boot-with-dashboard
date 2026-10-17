@@ -22,9 +22,9 @@ export default function SystemSettingsPage() {
     'Automated Game & Free Fire Top-Up API-as-a-Service Platform for Developers & Resellers'
   );
   const [logoUrl, setLogoUrl] = useState('/login-banner.jpg');
-  const [upstreamServerUrl, setUpstreamServerUrl] = useState('https://shop.garena.my/api/process-order');
+  const [upstreamServerUrl, setUpstreamServerUrl] = useState('https://api.unipin.com/api/process-order');
   const [upstreamApiKey, setUpstreamApiKey] = useState('PROV_MASTER_9X8Y7Z6A');
-  const [telegramAlertChatId, setTelegramAlertChatId] = useState('@GarenaTopupAlerts');
+  const [telegramAlertChatId, setTelegramAlertChatId] = useState('@UniPinTopupAlerts');
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -46,7 +46,7 @@ export default function SystemSettingsPage() {
         setSiteName(data.settings.siteName || 'AMS Topup');
         setDescription(data.settings.description || '');
         setLogoUrl(data.settings.logoUrl || '/login-banner.jpg');
-        setUpstreamServerUrl(data.settings.upstreamServerUrl || 'https://shop.garena.my/api/process-order');
+        setUpstreamServerUrl(data.settings.upstreamServerUrl || 'https://api.unipin.com/api/process-order');
         setUpstreamApiKey(data.settings.upstreamApiKey || '');
         setTelegramAlertChatId(data.settings.telegramAlertChatId || '');
       }
@@ -248,7 +248,7 @@ export default function SystemSettingsPage() {
                 type="text"
                 value={telegramAlertChatId}
                 onChange={(e) => setTelegramAlertChatId(e.target.value)}
-                placeholder="@GarenaTopupAlerts or Chat ID"
+                placeholder="@UniPinTopupAlerts or Chat ID"
                 className="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:border-cyan-500 focus:outline-none"
               />
               <p className="text-[11px] text-slate-500">

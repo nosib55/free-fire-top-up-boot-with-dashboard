@@ -2,8 +2,6 @@ import { Queue, Worker, Job } from 'bullmq';
 import { createBullMQConnection } from '../redis';
 import { processUniPinVoucher, AutomationResult } from '../automation/unipinVoucher';
 import { executeDirectTlsTopup } from '../automation/directTopupEngine';
-import { processUniPinWallet } from '../automation/unipinWallet';
-import { processGarenaShells } from '../automation/garenaShells';
 import { processFlexbaseUnipin } from '../automation/flexbaseUnipin';
 import { warmupShopPage } from '../automation/browserManager';
 
@@ -33,7 +31,7 @@ if (redisClient) {
 
 export interface TopUpJobData {
   jobId: string;
-  pipeline: 'UNIPIN_VOUCHER' | 'UNIPIN_WALLET' | 'GARENA_SHELLS' | 'FLEXBASE_UNIPIN';
+  pipeline: 'UNIPIN_VOUCHER' | 'UNIPIN_WALLET' | 'FLEXBASE_UNIPIN';
   uid: string;
   voucherCode?: string;
   serial?: string;
@@ -115,14 +113,8 @@ if (redisClient) {
           let result!: AutomationResult;
 
           if (pipeline === 'UNIPIN_WALLET') {
+            const { processUniPinWallet } = await import('../automation/unipinWallet');
             result = await processUniPinWallet({ uid, diamondPackageId: diamondPackageId || '100_DIAMONDS' });
-          } else if (pipeline === 'GARENA_SHELLS') {
-            result = await processGarenaShells({
-              uid,
-              itemType: itemType || 'WEEKLY_MEMBERSHIP',
-              playerLevel: job.data.playerLevel,
-              resellerUserId: job.data.resellerUserId,
-            });
           } else {
             // 🔥 UniPin Voucher Top-up: Exclusively handled by Flexbase Python API
             console.log(`[TopUp Queue] 🔥 Executing UniPin voucher top-up exclusively via Flexbase Python API for UID ${uid}...`);
@@ -200,14 +192,8 @@ export async function executeTopupDirect(data: TopUpJobData): Promise<Automation
 
   try {
     if (data.pipeline === 'UNIPIN_WALLET') {
+      const { processUniPinWallet } = await import('../automation/unipinWallet');
       return await processUniPinWallet({ uid: data.uid, diamondPackageId: data.diamondPackageId || '100_DIAMONDS' });
-    } else if (data.pipeline === 'GARENA_SHELLS') {
-      return await processGarenaShells({
-        uid: data.uid,
-        itemType: data.itemType || 'WEEKLY_MEMBERSHIP',
-        playerLevel: data.playerLevel,
-        resellerUserId: data.resellerUserId,
-      });
     } else {
       // 🔥 UniPin Voucher Top-up: Exclusively handled by Flexbase Python API
       console.log(`[TopUp Direct] 🔥 Executing UniPin voucher top-up exclusively via Flexbase Python API for UID ${data.uid}...`);

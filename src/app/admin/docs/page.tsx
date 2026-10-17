@@ -134,7 +134,6 @@ processTopupOrder();`;
           </h3>
           <ul className="text-xs text-slate-300 space-y-1 font-mono">
             <li>• <code className="text-cyan-300">UNIPIN_VOUCHER</code> (UniPin BDMB & UPBD Voucher / PIN)</li>
-            <li>• <code className="text-cyan-300">GARENA_SHELLS</code> (Garena Shells Deals & Level-Up Passes)</li>
           </ul>
         </div>
       </div>

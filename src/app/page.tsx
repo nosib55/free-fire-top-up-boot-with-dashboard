@@ -253,7 +253,7 @@ export default function LandingPage() {
           <div className="max-w-5xl mx-auto text-center space-y-5 sm:space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] sm:text-xs font-semibold text-cyan-400 shadow-sm max-w-full truncate">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-              <span className="truncate">Garena & UniPin Automation Gateway v2.4 Online</span>
+              <span className="truncate">UniPin Automation Gateway v2.4 Online</span>
             </div>
 
             <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight break-words">
@@ -288,9 +288,9 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-2xl mb-4 font-bold">
                 ⚡
               </div>
-              <h3 className="text-xl font-bold text-slate-100 mb-2">Automated UniPin & Garena Pipelines</h3>
+              <h3 className="text-xl font-bold text-slate-100 mb-2">Automated UniPin Top-Up Pipeline</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
-                Auto-detect code prefixes (<code className="text-cyan-300 bg-slate-950 px-1 py-0.5 rounded">BDMB</code> vs <code className="text-cyan-300 bg-slate-950 px-1 py-0.5 rounded">UPBD</code>), verify UID on Garena, and execute instant diamond top-ups.
+                Auto-detect code prefixes (<code className="text-cyan-300 bg-slate-950 px-1 py-0.5 rounded">BDMB</code> vs <code className="text-cyan-300 bg-slate-950 px-1 py-0.5 rounded">UPBD</code>), verify UID, and execute instant diamond top-ups.
               </p>
             </div>
 
@@ -357,7 +357,7 @@ export default function LandingPage() {
                 <li>• Multi-Tenant Sub-Key Management</li>
                 <li>• Isolated Client Order Analytics</li>
                 <li>• Webhook Callbacks & Telemetry</li>
-                <li>• Garena Shells Automation Pool</li>
+                <li>• Instant UniPin Voucher Processing</li>
               </ul>
               <Link
                 href="/login"
